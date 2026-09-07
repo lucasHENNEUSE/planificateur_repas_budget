@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planificateur de Repas & Budget</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4f46e5; --primary-hover: #4338ca;
+            --success: #10b981; --success-hover: #059669;
+            --bg-color: #f8fafc; --card-bg: #ffffff;
+            --text-main: #0f172a; --text-muted: #64748b; --border: #e2e8f0;
+        }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg-color); margin: 0; padding: 40px 20px; color: var(--text-main); }
+        .container { max-width: 850px; margin: auto; background: var(--card-bg); padding: 40px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+        h1 { text-align: center; font-weight: 700; font-size: 2rem; margin-bottom: 40px; }
+        h2 { font-size: 1.5rem; margin-bottom: 25px; border-bottom: 2px solid var(--bg-color); padding-bottom: 15px; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; font-weight: 500; margin-bottom: 8px; font-size: 0.95rem; }
+        .input-group { display: flex; gap: 10px; }
+        input, select { width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: 8px; box-sizing: border-box; font-family: inherit; font-size: 1rem; }
+        button { background: var(--primary); color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 1rem; width: 100%; transition: 0.2s; }
+        button:hover { background: var(--primary-hover); }
+        .btn-inline { width: auto; white-space: nowrap; }
+        .btn-small { background: #f1f5f9; color: var(--text-main); padding: 8px 14px; font-size: 0.85rem; width: auto; border: 1px solid var(--border); }
+        .btn-small:hover { background: #e2e8f0; }
+        .hidden { display: none !important; }
+        .spinner { width: 40px; height: 40px; border: 4px solid #e0e7ff; border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 15px auto; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        .day-card { border: 1px solid var(--border); padding: 24px; border-radius: 12px; margin-bottom: 24px; }
+        .day-title { text-transform: uppercase; font-size: 0.85rem; color: var(--text-muted); font-weight: 700; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+        .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .meal-option { background: var(--bg-color); padding: 15px; border-radius: 10px; display: flex; flex-direction: column; justify-content: space-between; }
+        .meal-name { font-weight: 600; margin-bottom: 10px; }
+        .meal-price { background: #dcfce7; color: #166534; padding: 4px 8px; border-radius: 6px; font-weight: 700; font-size: 0.85rem; display: inline-block; margin-bottom: 15px;}
+        
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .modal-content { background: white; padding: 30px; border-radius: 12px; width: 90%; max-width: 600px; max-height: 85vh; overflow-y: auto; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 15px; margin-bottom: 15px; }
+        .modal-close { background: none; color: var(--text-muted); font-size: 1.5rem; width: auto; padding: 0; border: none; cursor: pointer; }
+        .modal-body ul, .modal-body ol { padding-left: 20px; color: var(--text-muted); font-size: 0.95rem; }
+        .edit-section { background: var(--bg-color); padding: 15px; border-radius: 8px; margin-top: 20px; border: 1px dashed #cbd5e1; }
+        
+        .price-container { display: flex; gap: 15px; margin-bottom: 20px; }
+        .price-box { background: #f8fafc; border: 1px solid #e2e8f0; padding: 10px 15px; border-radius: 8px; font-size: 0.9rem; }
+        .price-box span { font-weight: 700; color: #166534; font-size: 1.1rem; }
+        
+        @media (max-width: 600px) { .options-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Planificateur de Repas</h1>
+        
+        <div id="step-config">
+            <div class="form-group">
+                <label>Ville des courses</label>
+                <div class="input-group">
+                    <input type="text" id="city" value="Ploudalmézeau">
+                    <button type="button" class="btn-inline" onclick="loadStores()">Rechercher</button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Sélectionnez votre enseigne</label>
+                <select id="store-select"><option value="">Recherchez une ville d'abord</option></select>
+            </div>
+            <div class="input-group" style="margin-bottom: 20px;">
+                <div style="flex: 1;"><label>Adultes</label><input type="number" id="adults" value="2"></div>
+                <div style="flex: 1;"><label>Enfants</label><input type="number" id="children" value="1"></div>
+            </div>
+            <div class="form-group">
+                <label>Budget max par personne / repas (Euros)</label>
+                <input type="number" id="budget" value="4.0" step="0.5">
+            </div>
+            <button onclick="generateMenus()">Generer la semaine de repas</button>
+        </div>
+
+        <div id="loader" class="hidden" style="text-align:center; padding: 40px 0;">
+            <div class="spinner"></div>
+            <span id="loader-text" style="color:var(--primary); font-weight:500;">Creation des menus en cours...</span>
+        </div>
+
+        <div id="step-menus" class="hidden">
+            <h2 id="menu-title">Semaine de Repas</h2>
+            <div id="menus-container"></div>
+            <button style="background: var(--success); margin-top: 20px;">Valider et telecharger la liste</button>
+        </div>
+    </div>
+
+    <div id="recipe-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title" style="margin:0; border:none; padding:0; font-size:1.3rem;">Titre</h2>
+                <button class="modal-close" onclick="closeModal()">X</button>
+            </div>
+            <div id="modal-loader" class="hidden" style="text-align:center; padding:20px;">
+                <div class="spinner"></div>
+                <div id="modal-loader-text">Analyse de la recette...</div>
+            </div>
+            <div id="modal-body" class="modal-body hidden">
+                
+                <div class="price-container">
+                    <div class="price-box">Prix par personne : <br><span id="modal-price-pp"></span></div>
+                    <div class="price-box">Prix total estime : <br><span id="modal-price-total"></span></div>
+                </div>
+
+                <h3 style="font-size: 1rem; margin-bottom: 5px;">Ingredients :</h3>
+                <ul id="modal-ingredients"></ul>
+                
+                <h3 style="font-size: 1rem; margin-bottom: 5px;">Preparation :</h3>
+                <ol id="modal-instructions"></ol>
+                
+                <div class="edit-section">
+                    <label>Souhaitez-vous modifier la recette ?</label>
+                    <input type="text" id="feedback-input" placeholder="Exemple: Remplacer le boeuf par du poulet" style="margin-bottom: 10px;">
+                    <button class="btn-small" style="background: var(--primary); color: white;" onclick="submitRecipeMod()">Ajuster la recette et les prix</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentMenusData = {};
+        let currentDayBeingEdited = "";
+        let currentIndexBeingEdited = 0;
+        let currentMealName = "";
+
+        window.onload = function() { loadStores(); };
+
+        async function loadStores() {
+            const city = document.getElementById('city').value;
+            const storeSelect = document.getElementById('store-select');
+            storeSelect.innerHTML = "<option>Recherche en cours...</option>";
+            try {
+                const response = await fetch('/api/get-stores', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ city }) });
+                const data = await response.json();
+                storeSelect.innerHTML = "";
+                if (data.status === "success" && data.stores.length > 0) {
+                    data.stores.forEach(s => {
+                        const opt = document.createElement('option');
+                        opt.value = JSON.stringify(s); opt.textContent = `${s.nom} - (${s.adresse})`;
+                        storeSelect.appendChild(opt);
+                    });
+                } else storeSelect.innerHTML = "<option value=''>Aucun magasin trouve</option>";
+            } catch (err) { alert("Erreur reseau."); }
+        }
+
+        async function generateMenus() {
+            const rawValue = document.getElementById('store-select').value;
+            if (!rawValue) return alert("Selectionnez un magasin.");
+            const storeObj = JSON.parse(rawValue);
+            
+            document.getElementById('step-config').classList.add('hidden');
+            document.getElementById('loader').classList.remove('hidden');
+
+            try {
+                const response = await fetch('/api/generate-menus', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        store_name: storeObj.nom, 
+                        budget: document.getElementById('budget').value,
+                        adults: document.getElementById('adults').value,
+                        children: document.getElementById('children').value
+                    })
+                });
+                const data = await response.json();
+                if (data.status === "success") {
+                    currentMenusData = data.menus;
+                    renderMenus();
+                    document.getElementById('loader').classList.add('hidden');
+                    document.getElementById('step-menus').classList.remove('hidden');
+                    document.getElementById('menu-title').innerText = `Semaine chez ${storeObj.nom}`;
+                } else {
+                    alert("Erreur : " + data.details); location.reload();
+                }
+            } catch (err) { alert("Erreur reseau."); location.reload(); }
+        }
+
+        function renderMenus() {
+            const container = document.getElementById('menus-container');
+            container.innerHTML = "";
+            for (const [day, options] of Object.entries(currentMenusData)) {
+                let html = `<div class="day-card"><h3 class="day-title">${day}</h3><div class="options-grid">`;
+                options.forEach((opt, index) => {
+                    const prix = opt.prix_par_personne || 0;
+                    html += `
+                    <div class="meal-option">
+                        <div>
+                            <div class="meal-name">${opt.nom}</div>
+                            <div class="meal-price">${prix} Euros / pers.</div>
+                        </div>
+                        <button class="btn-small" onclick="openRecipe('${day}', ${index}, '${opt.nom}', ${prix})">Voir la recette et les couts</button>
+                    </div>`;
+                });
+                html += `</div></div>`;
+                container.innerHTML += html;
+            }
+        }
+
+        function closeModal() { document.getElementById('recipe-modal').classList.add('hidden'); }
+
+        async function openRecipe(day, index, mealName, prix_par_personne) {
+            currentDayBeingEdited = day;
+            currentIndexBeingEdited = index;
+            currentMealName = mealName;
+            
+            document.getElementById('modal-title').innerText = mealName;
+            document.getElementById('recipe-modal').classList.remove('hidden');
+            document.getElementById('modal-body').classList.add('hidden');
+            document.getElementById('modal-loader').classList.remove('hidden');
+            document.getElementById('modal-loader-text').innerText = "Analyse de la recette et des prix en cours...";
+            document.getElementById('feedback-input').value = "";
+
+            const storeObj = JSON.parse(document.getElementById('store-select').value);
+            const adults = document.getElementById('adults').value;
+            const children = document.getElementById('children').value;
+            
+            try {
+                const response = await fetch('/api/get-recipe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        meal_name: mealName, 
+                        prix_par_personne: prix_par_personne,
+                        store_name: storeObj.nom, 
+                        adults: adults,
+                        children: children
+                    })
+                });
+                const data = await response.json();
+                if (data.status === "success") populateModal(data.recipe);
+                else { closeModal(); alert("Erreur lors de la recuperation."); }
+            } catch (err) { closeModal(); alert("Erreur reseau."); }
+        }
+
+        async function submitRecipeMod() {
+            const feedback = document.getElementById('feedback-input').value;
+            if(!feedback) return alert("Precisez la modification souhaitee.");
+            
+            document.getElementById('modal-body').classList.add('hidden');
+            document.getElementById('modal-loader').classList.remove('hidden');
+            document.getElementById('modal-loader-text').innerText = "Recalcul de la recette et des nouveaux prix...";
+
+            const storeObj = JSON.parse(document.getElementById('store-select').value);
+            const adults = document.getElementById('adults').value;
+            const children = document.getElementById('children').value;
+            const prix_actuel = currentMenusData[currentDayBeingEdited][currentIndexBeingEdited].prix_par_personne;
+
+            try {
+                const response = await fetch('/api/modify-recipe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        meal_name: currentMealName, 
+                        feedback: feedback, 
+                        prix_par_personne: prix_actuel,
+                        store_name: storeObj.nom, 
+                        adults: adults,
+                        children: children
+                    })
+                });
+                const data = await response.json();
+                if (data.status === "success") {
+                    currentMenusData[currentDayBeingEdited][currentIndexBeingEdited].nom = data.recipe.nom;
+                    currentMenusData[currentDayBeingEdited][currentIndexBeingEdited].prix_par_personne = data.recipe.prix_par_personne;
+                    currentMealName = data.recipe.nom;
+                    
+                    document.getElementById('modal-title').innerText = currentMealName;
+                    renderMenus();
+                    populateModal(data.recipe);
+                    document.getElementById('feedback-input').value = "";
+                } else { alert("Erreur de modification."); closeModal(); }
+            } catch (err) { alert("Erreur reseau."); closeModal(); }
+        }
+
+        function populateModal(recipe) {
+            document.getElementById('modal-loader').classList.add('hidden');
+            document.getElementById('modal-body').classList.remove('hidden');
+            
+            document.getElementById('modal-price-pp').innerText = recipe.prix_par_personne + " Euros";
+            document.getElementById('modal-price-total').innerText = recipe.prix_total + " Euros";
+            
+            const ingUl = document.getElementById('modal-ingredients');
+            ingUl.innerHTML = "";
+            (recipe.ingredients || []).forEach(i => {
+                const li = document.createElement('li'); li.innerText = i; ingUl.appendChild(li);
+            });
+            
+            const stepOl = document.getElementById('modal-instructions');
+            stepOl.innerHTML = "";
+            (recipe.etapes || []).forEach(e => {
+                const li = document.createElement('li'); li.innerText = e; stepOl.appendChild(li);
+            });
+        }
+    </script>
+</body>
+</html>
