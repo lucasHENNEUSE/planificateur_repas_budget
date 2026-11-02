@@ -3,297 +3,391 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Planificateur de Repas & Budget</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>Éco-Frigo | Planificateur Intelligent</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
+        /* (Le design ne change pas) */
         :root {
-            --primary: #4f46e5; --primary-hover: #4338ca;
-            --success: #10b981; --success-hover: #059669;
-            --bg-color: #f8fafc; --card-bg: #ffffff;
-            --text-main: #0f172a; --text-muted: #64748b; --border: #e2e8f0;
+            --primary: #10b981; --primary-hover: #059669; --primary-light: #d1fae5;
+            --secondary: #f43f5e; --secondary-hover: #e11d48;
+            --bg-body: #f8fafc; --bg-card: #ffffff;
+            --text-dark: #0f172a; --text-gray: #64748b; --border-light: #e2e8f0;
+            --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.05); --shadow-md: 0 10px 25px -5px rgba(0, 0, 0, 0.1); --shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            --radius-lg: 20px; --radius-md: 12px;
         }
-        body { font-family: 'Inter', sans-serif; background-color: var(--bg-color); margin: 0; padding: 40px 20px; color: var(--text-main); }
-        .container { max-width: 850px; margin: auto; background: var(--card-bg); padding: 40px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
-        h1 { text-align: center; font-weight: 700; font-size: 2rem; margin-bottom: 40px; }
-        h2 { font-size: 1.5rem; margin-bottom: 25px; border-bottom: 2px solid var(--bg-color); padding-bottom: 15px; }
+
+        body { font-family: 'Outfit', sans-serif; background-color: var(--bg-body); color: var(--text-dark); margin: 0; padding: 40px 20px; line-height: 1.6; overflow-x: hidden; }
+        .bg-shape { position: fixed; border-radius: 50%; filter: blur(70px); z-index: -1; opacity: 0.6; animation: float 12s infinite alternate ease-in-out; }
+        .shape1 { width: 400px; height: 400px; background: #bae6fd; top: -100px; left: -100px; }
+        .shape2 { width: 500px; height: 500px; background: #d9f99d; bottom: -150px; right: -100px; animation-delay: -5s; }
+        @keyframes float { 0% { transform: translate(0, 0) scale(1); } 100% { transform: translate(50px, 80px) scale(1.1); } }
+
+        .container { max-width: 850px; margin: auto; background: rgba(255, 255, 255, 0.95); padding: 45px; border-radius: 24px; box-shadow: 0 20px 40px rgba(14, 165, 233, 0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.5); position: relative; z-index: 1; }
+        .header { text-align: center; margin-bottom: 40px; }
+        .header h1 { font-weight: 800; font-size: 2.8rem; margin: 0 0 10px 0; color: var(--primary); letter-spacing: -1px;}
+        .header p { color: var(--text-muted); margin: 0; font-size: 1.15rem; }
+
+        h2 { font-size: 1.3rem; margin: 0 0 15px 0; font-weight: 600; display: flex; align-items: center; gap: 10px; color: #334155;}
+        .step-section { background: white; padding: 25px; border-radius: 16px; border: 1px solid var(--border-light); margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
         .form-group { margin-bottom: 20px; }
-        label { display: block; font-weight: 500; margin-bottom: 8px; font-size: 0.95rem; }
-        .input-group { display: flex; gap: 10px; }
-        input, select { width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: 8px; box-sizing: border-box; font-family: inherit; font-size: 1rem; }
-        button { background: var(--primary); color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 1rem; width: 100%; transition: 0.2s; }
-        button:hover { background: var(--primary-hover); }
-        .btn-inline { width: auto; white-space: nowrap; }
-        .btn-small { background: #f1f5f9; color: var(--text-main); padding: 8px 14px; font-size: 0.85rem; width: auto; border: 1px solid var(--border); }
-        .btn-small:hover { background: #e2e8f0; }
+        label { display: block; font-weight: 500; margin-bottom: 8px; font-size: 0.95rem; color: #475569;}
+        
+        .input-group { display: flex; gap: 15px; }
+        input[type="text"], input[type="password"], select, input[type="number"] { width: 100%; padding: 16px; border: 2px solid var(--border-light); border-radius: 12px; box-sizing: border-box; font-family: inherit; font-size: 1rem; transition: 0.2s; background: #f8fafc; }
+        input:focus, select:focus { border-color: var(--primary); outline: none; background: white; }
+
+        .counter-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;}
+        .counter-wrapper { display: flex; align-items: center; justify-content: space-between; background: #f8fafc; border: 2px solid var(--border-light); border-radius: 12px; padding: 6px; }
+        .counter-btn { background: white; border: 1px solid var(--border-light); width: 40px; height: 40px; border-radius: 8px; font-size: 1.5rem; cursor: pointer; color: var(--primary); }
+        .counter-val { font-weight: 700; font-size: 1.3rem; width: 40px; text-align: center; color: var(--text-dark);}
+
+        .btn-search { background: var(--primary); color: white; border: none; padding: 0 25px; border-radius: 12px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px;}
+        .btn-main { background: linear-gradient(135deg, var(--primary), #3b82f6); color: white; border: none; padding: 20px; border-radius: 16px; cursor: pointer; font-weight: 600; font-size: 1.15rem; width: 100%; display: flex; justify-content: center; align-items: center; gap: 12px; margin-top: 10px;}
+        .btn-outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); padding: 10px 20px; font-size: 0.95rem; border-radius: 8px; cursor: pointer; width: 100%;}
+        
+        .icon { width: 22px; height: 22px; fill: currentColor; }
         .hidden { display: none !important; }
-        .spinner { width: 40px; height: 40px; border: 4px solid #e0e7ff; border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 15px auto; }
-        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .loader-container { text-align: center; padding: 60px 0; display: flex; flex-direction: column; align-items: center; }
         
-        .day-card { border: 1px solid var(--border); padding: 24px; border-radius: 12px; margin-bottom: 24px; }
-        .day-title { text-transform: uppercase; font-size: 0.85rem; color: var(--text-muted); font-weight: 700; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
-        .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-        .meal-option { background: var(--bg-color); padding: 15px; border-radius: 10px; display: flex; flex-direction: column; justify-content: space-between; }
-        .meal-name { font-weight: 600; margin-bottom: 10px; }
-        .meal-price { background: #dcfce7; color: #166534; padding: 4px 8px; border-radius: 6px; font-weight: 700; font-size: 0.85rem; display: inline-block; margin-bottom: 15px;}
+        /* Les Tupperwares dans le frigo */
+        .fridge-interior { background: linear-gradient(180deg, #ffffff 0%, #e0f2fe 100%); border: 16px solid #cbd5e1; border-radius: 24px; padding: 40px 25px; min-height: 600px;}
+        .fridge-title { text-align: center; color: #0284c7; font-size: 2.2rem; margin: 0 0 40px 0; font-weight: 700; }
+        .shelf { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 25px; padding-bottom: 25px; margin-bottom: 35px; border-bottom: 8px solid rgba(255,255,255,0.7); }
+        .day-box { background: rgba(255, 255, 255, 0.9); border: 1px solid white; border-radius: 16px; padding: 25px; box-shadow: 0 8px 20px rgba(0,0,0,0.05); }
+        .day-title { font-size: 1.3rem; font-weight: 700; color: #0ea5e9; text-transform: uppercase; margin: 0 0 20px 0; border-bottom: 2px dashed #bae6fd; padding-bottom: 10px; }
+        .meal-option { background: #f8fafc; border-radius: 12px; padding: 15px; margin-bottom: 15px; border: 1px solid #e2e8f0; }
+        .meal-badge { font-size: 0.75rem; font-weight: 700; background: #e0f2fe; color: #0ea5e9; padding: 4px 10px; border-radius: 20px; display: inline-block; margin-bottom: 10px; }
+        .meal-name { font-size: 1rem; font-weight: 600; color: #1e293b; margin-bottom: 10px; line-height: 1.4;}
+        .meal-price { font-size: 0.95rem; font-weight: 700; color: #059669; margin-bottom: 15px; }
+
+        /* Modale */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.85); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .modal-content { background: white; border-radius: 12px; width: 95%; max-width: 600px; max-height: 85vh; overflow-y: auto; padding: 30px; position: relative;}
+        .btn-close { position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 2rem; cursor: pointer; color: #94a3b8; }
         
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-        .modal-content { background: white; padding: 30px; border-radius: 12px; width: 90%; max-width: 600px; max-height: 85vh; overflow-y: auto; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 15px; margin-bottom: 15px; }
-        .modal-close { background: none; color: var(--text-muted); font-size: 1.5rem; width: auto; padding: 0; border: none; cursor: pointer; }
-        .modal-body ul, .modal-body ol { padding-left: 20px; color: var(--text-muted); font-size: 0.95rem; }
-        .edit-section { background: var(--bg-color); padding: 15px; border-radius: 8px; margin-top: 20px; border: 1px dashed #cbd5e1; }
-        
-        .price-container { display: flex; gap: 15px; margin-bottom: 20px; }
-        .price-box { background: #f8fafc; border: 1px solid #e2e8f0; padding: 10px 15px; border-radius: 8px; font-size: 0.9rem; }
-        .price-box span { font-weight: 700; color: #166534; font-size: 1.1rem; }
-        
-        @media (max-width: 600px) { .options-grid { grid-template-columns: 1fr; } }
+        /* Ecran de connexion */
+        .auth-container { max-width: 400px; margin: 0 auto; text-align: center; }
+        .auth-container h2 { justify-content: center; font-size: 1.8rem; margin-bottom: 20px;}
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Planificateur de Repas</h1>
+    <div class="bg-shape shape1"></div>
+    <div class="bg-shape shape2"></div>
+
+    <div class="container" id="main-container">
+        <div class="header">
+            <h1>Éco-Frigo</h1>
+            <p>Le planificateur intelligent de vos repas.</p>
+        </div>
+
+        <!-- 1. ÉCRAN DE CONNEXION (Sécurité OWASP) -->
+        <div id="auth-panel" class="auth-container">
+            <h2>Accès Sécurisé</h2>
+            <p style="color: var(--text-gray); margin-bottom: 20px;">Connectez-vous pour générer vos menus.</p>
+            
+            <input type="text" id="email" placeholder="Adresse Email" style="margin-bottom: 15px;">
+            <input type="password" id="password" placeholder="Mot de passe (min. 6 caractères)" style="margin-bottom: 20px;">
+            
+            <button class="btn-main" onclick="authentifier('login')" style="margin-bottom: 10px;">Se connecter</button>
+            <button class="btn-outline" onclick="authentifier('register')">Créer un compte</button>
+            
+            <div id="auth-error" style="color: var(--secondary); margin-top: 15px; font-weight: 500;"></div>
+        </div>
         
-        <div id="step-config">
-            <div class="form-group">
-                <label>Ville des courses</label>
+        <!-- 2. ÉCRAN CONFIGURATION (Caché au départ) -->
+        <div id="step-config" class="hidden">
+            <!-- Bouton pour se déconnecter -->
+            <div style="text-align: right; margin-bottom: 15px;">
+                <button onclick="seDeconnecter()" style="background: none; border: none; color: var(--secondary); cursor: pointer; font-weight: 600;">Se déconnecter</button>
+            </div>
+
+            <div class="step-section">
+                <h2>1. Où faites-vous vos courses ?</h2>
                 <div class="input-group">
-                    <input type="text" id="city" value="Ploudalmézeau">
-                    <button type="button" class="btn-inline" onclick="loadStores()">Rechercher</button>
+                    <input type="text" id="city" placeholder="Ex: Brest, Paris, Lyon...">
+                    <button type="button" class="btn-search" onclick="loadStores()">Chercher</button>
+                </div>
+                <div style="margin-top: 15px;">
+                    <select id="store-select"><option value="">-- Choisissez l'enseigne --</option></select>
                 </div>
             </div>
-            <div class="form-group">
-                <label>Sélectionnez votre enseigne</label>
-                <select id="store-select"><option value="">Recherchez une ville d'abord</option></select>
+
+            <div class="step-section">
+                <h2>2. Foyer et Budget</h2>
+                <div class="counter-grid">
+                    <div>
+                        <label>Adultes</label>
+                        <div class="counter-wrapper">
+                            <button class="counter-btn" onclick="updateCounter('adults', -1)">-</button>
+                            <span class="counter-val" id="adults-val">2</span>
+                            <button class="counter-btn" onclick="updateCounter('adults', 1)">+</button>
+                            <input type="hidden" id="adults" value="2">
+                        </div>
+                    </div>
+                    <div>
+                        <label>Enfants</label>
+                        <div class="counter-wrapper">
+                            <button class="counter-btn" onclick="updateCounter('children', -1)">-</button>
+                            <span class="counter-val" id="children-val">1</span>
+                            <button class="counter-btn" onclick="updateCounter('children', 1)">+</button>
+                            <input type="hidden" id="children" value="1">
+                        </div>
+                    </div>
+                </div>
+                <div style="margin-top: 15px;">
+                    <label>Budget max par personne (€)</label>
+                    <input type="number" id="budget" value="4.0" step="0.5" min="1.0">
+                </div>
             </div>
-            <div class="input-group" style="margin-bottom: 20px;">
-                <div style="flex: 1;"><label>Adultes</label><input type="number" id="adults" value="2"></div>
-                <div style="flex: 1;"><label>Enfants</label><input type="number" id="children" value="1"></div>
-            </div>
-            <div class="form-group">
-                <label>Budget max par personne / repas (Euros)</label>
-                <input type="number" id="budget" value="4.0" step="0.5">
-            </div>
-            <button onclick="generateMenus()">Generer la semaine de repas</button>
+
+            <button class="btn-main" onclick="generateMenus()">Ouvrir le frigo et générer le menu</button>
         </div>
 
-        <div id="loader" class="hidden" style="text-align:center; padding: 40px 0;">
-            <div class="spinner"></div>
-            <span id="loader-text" style="color:var(--primary); font-weight:500;">Creation des menus en cours...</span>
-        </div>
-
-        <div id="step-menus" class="hidden">
-            <h2 id="menu-title">Semaine de Repas</h2>
-            <div id="menus-container"></div>
-            <button style="background: var(--success); margin-top: 20px;">Valider et telecharger la liste</button>
+        <div id="loader" class="loader-container hidden">
+            <h3 style="color:var(--primary); font-size: 1.5rem;">Génération en cours...</h3>
+            <p>Veuillez patienter.</p>
         </div>
     </div>
 
+    <!-- 3. INTÉRIEUR DU FRIGO (Les Menus) -->
+    <div id="step-menus" class="container hidden" style="max-width: 1050px; background: transparent; border: none; box-shadow: none;">
+        <div class="fridge-interior">
+            <h2 class="fridge-title" id="menu-title">Votre Frigo</h2>
+            <div id="fridge-shelves-container"></div>
+            <button class="btn-main" style="width: auto; margin: 30px auto 0;">Valider et créer la liste de courses</button>
+        </div>
+    </div>
+
+    <!-- 4. MODALE DE RECETTE -->
     <div id="recipe-modal" class="modal-overlay hidden">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="modal-title" style="margin:0; border:none; padding:0; font-size:1.3rem;">Titre</h2>
-                <button class="modal-close" onclick="closeModal()">X</button>
+            <button class="btn-close" onclick="closeModal()">×</button>
+            <h2 id="modal-title" style="color: #1e293b; font-size: 1.8rem; margin-top: 0;">Plat</h2>
+            <div style="color: #059669; font-weight: 700; margin-bottom: 20px;">
+                Coût : <span id="modal-price-pp">0.00</span> € / pers.
             </div>
-            <div id="modal-loader" class="hidden" style="text-align:center; padding:20px;">
-                <div class="spinner"></div>
-                <div id="modal-loader-text">Analyse de la recette...</div>
-            </div>
-            <div id="modal-body" class="modal-body hidden">
-                
-                <div class="price-container">
-                    <div class="price-box">Prix par personne : <br><span id="modal-price-pp"></span></div>
-                    <div class="price-box">Prix total estime : <br><span id="modal-price-total"></span></div>
-                </div>
-
-                <h3 style="font-size: 1rem; margin-bottom: 5px;">Ingredients :</h3>
-                <ul id="modal-ingredients"></ul>
-                
-                <h3 style="font-size: 1rem; margin-bottom: 5px;">Preparation :</h3>
-                <ol id="modal-instructions"></ol>
-                
-                <div class="edit-section">
-                    <label>Souhaitez-vous modifier la recette ?</label>
-                    <input type="text" id="feedback-input" placeholder="Exemple: Remplacer le boeuf par du poulet" style="margin-bottom: 10px;">
-                    <button class="btn-small" style="background: var(--primary); color: white;" onclick="submitRecipeMod()">Ajuster la recette et les prix</button>
-                </div>
-            </div>
+            
+            <div id="modal-loader" class="hidden">Chargement de la recette...</div>
+            
+            <h3 style="color: #475569; font-size: 1.1rem;">Ingrédients</h3>
+            <ul id="modal-ingredients" style="color: #334155; line-height: 1.6;"></ul>
+            
+            <h3 style="color: #475569; font-size: 1.1rem; margin-top: 20px;">Préparation</h3>
+            <ol id="modal-instructions" style="color: #334155; line-height: 1.6;"></ol>
         </div>
     </div>
 
     <script>
         let currentMenusData = {};
-        let currentDayBeingEdited = "";
-        let currentIndexBeingEdited = 0;
-        let currentMealName = "";
 
-        window.onload = function() { loadStores(); };
+        // -----------------------------------------
+        // GESTION DE LA SÉCURITÉ (Le Frontend)
+        // -----------------------------------------
+        
+        // Au chargement de la page, on vérifie si l'utilisateur a déjà son "badge" (Jeton JWT)
+        window.onload = function() {
+            const token = localStorage.getItem("ecofrigo_token");
+            if (token) {
+                // S'il a le jeton, on cache la connexion et on montre la config
+                document.getElementById("auth-panel").classList.add("hidden");
+                document.getElementById("step-config").classList.remove("hidden");
+            }
+        };
+
+        // Fonction pour Créer un compte OU se Connecter
+        async function authentifier(action) {
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+            const errorDiv = document.getElementById("auth-error");
+            
+            errorDiv.innerText = "Chargement...";
+
+            try {
+                // On appelle la route API (/login ou /register)
+                const response = await fetch(`/api/${action}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email: email, password: password })
+                });
+                const data = await response.json();
+
+                if (data.status === "success") {
+                    if (action === "login") {
+                        // Si connexion réussie, on sauvegarde le jeton JWT dans le navigateur !
+                        localStorage.setItem("ecofrigo_token", data.token);
+                        document.getElementById("auth-panel").classList.add("hidden");
+                        document.getElementById("step-config").classList.remove("hidden");
+                    } else {
+                        errorDiv.innerText = "Compte créé ! Vous pouvez vous connecter.";
+                        errorDiv.style.color = "var(--primary)";
+                    }
+                } else {
+                    errorDiv.innerText = data.details;
+                    errorDiv.style.color = "var(--secondary)";
+                }
+            } catch (err) {
+                errorDiv.innerText = "Erreur de connexion au serveur.";
+            }
+        }
+
+        // Fonction pour détruire le jeton
+        function seDeconnecter() {
+            localStorage.removeItem("ecofrigo_token"); // On détruit le badge
+            document.getElementById("step-config").classList.add("hidden");
+            document.getElementById("step-menus").classList.add("hidden");
+            document.getElementById("main-container").classList.remove("hidden");
+            document.getElementById("auth-panel").classList.remove("hidden");
+            document.getElementById("email").value = "";
+            document.getElementById("password").value = "";
+            document.getElementById("auth-error").innerText = "";
+        }
+
+        // -----------------------------------------
+        // FONCTIONNEMENT STANDARD DE L'APPLICATION
+        // -----------------------------------------
+
+        function updateCounter(id, delta) {
+            const input = document.getElementById(id);
+            const display = document.getElementById(id + '-val');
+            let val = parseInt(input.value) + delta;
+            if (id === 'adults' && val < 1) val = 1;
+            if (id === 'children' && val < 0) val = 0;
+            input.value = val; display.innerText = val;
+        }
 
         async function loadStores() {
-            const city = document.getElementById('city').value;
-            const storeSelect = document.getElementById('store-select');
-            storeSelect.innerHTML = "<option>Recherche en cours...</option>";
+            const city = document.getElementById('city').value.trim();
+            const select = document.getElementById('store-select');
+            if (!city) return alert("Saisissez une ville.");
+            
+            select.innerHTML = "<option>Recherche...</option>";
             try {
-                const response = await fetch('/api/get-stores', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ city }) });
+                const response = await fetch('/api/get-stores', { 
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ city }) 
+                });
                 const data = await response.json();
-                storeSelect.innerHTML = "";
+                select.innerHTML = "";
                 if (data.status === "success" && data.stores.length > 0) {
                     data.stores.forEach(s => {
                         const opt = document.createElement('option');
-                        opt.value = JSON.stringify(s); opt.textContent = `${s.nom} - (${s.adresse})`;
-                        storeSelect.appendChild(opt);
+                        opt.value = JSON.stringify(s); opt.textContent = `${s.nom} (${s.adresse})`;
+                        select.appendChild(opt);
                     });
-                } else storeSelect.innerHTML = "<option value=''>Aucun magasin trouve</option>";
-            } catch (err) { alert("Erreur reseau."); }
+                } else {
+                    select.innerHTML = "<option value=''>Aucun magasin trouvé</option>";
+                }
+            } catch (err) { select.innerHTML = "<option value=''>Erreur réseau</option>"; }
         }
 
         async function generateMenus() {
             const rawValue = document.getElementById('store-select').value;
-            if (!rawValue) return alert("Selectionnez un magasin.");
-            const storeObj = JSON.parse(rawValue);
+            if (!rawValue) return alert("Sélectionnez un magasin.");
             
+            // ATTENTION ICI : On récupère le jeton JWT pour l'envoyer à l'API
+            const token = localStorage.getItem("ecofrigo_token");
+            if (!token) return seDeconnecter(); // Sécurité : si on a perdu le jeton, on déconnecte
+
             document.getElementById('step-config').classList.add('hidden');
             document.getElementById('loader').classList.remove('hidden');
 
             try {
                 const response = await fetch('/api/generate-menus', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    method: 'POST', 
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        // C'est ici que la magie de la sécurité opère !
+                        'Authorization': `Bearer ${token}` 
+                    },
                     body: JSON.stringify({ 
-                        store_name: storeObj.nom, 
+                        store_name: JSON.parse(rawValue).nom, 
                         budget: document.getElementById('budget').value,
+                        adults: document.getElementById('adults').value,
+                        children: document.getElementById('children').value
+                    })
+                });
+                
+                // Si l'API refuse le jeton (ex: expiré)
+                if (response.status === 401) {
+                    alert("Session expirée. Veuillez vous reconnecter.");
+                    return seDeconnecter();
+                }
+
+                const data = await response.json();
+                
+                if (data.status === "success") {
+                    currentMenusData = data.menus;
+                    renderFridgeInterior();
+                    document.getElementById('main-container').classList.add('hidden');
+                    document.getElementById('step-menus').classList.remove('hidden');
+                } else {
+                    alert("Erreur de génération."); location.reload();
+                }
+            } catch (err) { alert("Erreur réseau."); location.reload(); }
+        }
+
+        function renderFridgeInterior() {
+            const container = document.getElementById('fridge-shelves-container');
+            container.innerHTML = "";
+            const jours = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
+            
+            let shelfHTML = "";
+            for (let i = 0; i < jours.length; i += 3) {
+                shelfHTML += `<div class="shelf">`;
+                jours.slice(i, i + 3).forEach(day => {
+                    if(currentMenusData[day]) {
+                        shelfHTML += `<div class="day-box"><h3 class="day-title">${day}</h3>`;
+                        currentMenusData[day].forEach((opt, index) => {
+                            shelfHTML += `
+                            <div class="meal-option">
+                                <span class="meal-badge">Choix ${index + 1}</span>
+                                <div class="meal-name">${opt.nom}</div>
+                                <div class="meal-price">${Number(opt.prix_par_personne).toFixed(2)} €</div>
+                                <button class="btn-outline" onclick="openRecipe('${day}', ${index})">Voir la recette</button>
+                            </div>`;
+                        });
+                        shelfHTML += `</div>`;
+                    }
+                });
+                shelfHTML += `</div>`;
+            }
+            container.innerHTML = shelfHTML;
+        }
+
+        function closeModal() { document.getElementById('recipe-modal').classList.add('hidden'); }
+
+        async function openRecipe(day, index) {
+            const meal = currentMenusData[day][index];
+            document.getElementById('modal-title').innerText = meal.nom;
+            document.getElementById('recipe-modal').classList.remove('hidden');
+            
+            document.getElementById('modal-ingredients').innerHTML = "";
+            document.getElementById('modal-instructions').innerHTML = "";
+            document.getElementById('modal-loader').classList.remove('hidden');
+
+            try {
+                const response = await fetch('/api/get-recipe', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        meal_name: meal.nom, 
+                        prix_par_personne: meal.prix_par_personne,
                         adults: document.getElementById('adults').value,
                         children: document.getElementById('children').value
                     })
                 });
                 const data = await response.json();
                 if (data.status === "success") {
-                    currentMenusData = data.menus;
-                    renderMenus();
-                    document.getElementById('loader').classList.add('hidden');
-                    document.getElementById('step-menus').classList.remove('hidden');
-                    document.getElementById('menu-title').innerText = `Semaine chez ${storeObj.nom}`;
-                } else {
-                    alert("Erreur : " + data.details); location.reload();
-                }
-            } catch (err) { alert("Erreur reseau."); location.reload(); }
-        }
-
-        function renderMenus() {
-            const container = document.getElementById('menus-container');
-            container.innerHTML = "";
-            for (const [day, options] of Object.entries(currentMenusData)) {
-                let html = `<div class="day-card"><h3 class="day-title">${day}</h3><div class="options-grid">`;
-                options.forEach((opt, index) => {
-                    const prix = opt.prix_par_personne || 0;
-                    html += `
-                    <div class="meal-option">
-                        <div>
-                            <div class="meal-name">${opt.nom}</div>
-                            <div class="meal-price">${prix} Euros / pers.</div>
-                        </div>
-                        <button class="btn-small" onclick="openRecipe('${day}', ${index}, '${opt.nom}', ${prix})">Voir la recette et les couts</button>
-                    </div>`;
-                });
-                html += `</div></div>`;
-                container.innerHTML += html;
-            }
-        }
-
-        function closeModal() { document.getElementById('recipe-modal').classList.add('hidden'); }
-
-        async function openRecipe(day, index, mealName, prix_par_personne) {
-            currentDayBeingEdited = day;
-            currentIndexBeingEdited = index;
-            currentMealName = mealName;
-            
-            document.getElementById('modal-title').innerText = mealName;
-            document.getElementById('recipe-modal').classList.remove('hidden');
-            document.getElementById('modal-body').classList.add('hidden');
-            document.getElementById('modal-loader').classList.remove('hidden');
-            document.getElementById('modal-loader-text').innerText = "Analyse de la recette et des prix en cours...";
-            document.getElementById('feedback-input').value = "";
-
-            const storeObj = JSON.parse(document.getElementById('store-select').value);
-            const adults = document.getElementById('adults').value;
-            const children = document.getElementById('children').value;
-            
-            try {
-                const response = await fetch('/api/get-recipe', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        meal_name: mealName, 
-                        prix_par_personne: prix_par_personne,
-                        store_name: storeObj.nom, 
-                        adults: adults,
-                        children: children
-                    })
-                });
-                const data = await response.json();
-                if (data.status === "success") populateModal(data.recipe);
-                else { closeModal(); alert("Erreur lors de la recuperation."); }
-            } catch (err) { closeModal(); alert("Erreur reseau."); }
-        }
-
-        async function submitRecipeMod() {
-            const feedback = document.getElementById('feedback-input').value;
-            if(!feedback) return alert("Precisez la modification souhaitee.");
-            
-            document.getElementById('modal-body').classList.add('hidden');
-            document.getElementById('modal-loader').classList.remove('hidden');
-            document.getElementById('modal-loader-text').innerText = "Recalcul de la recette et des nouveaux prix...";
-
-            const storeObj = JSON.parse(document.getElementById('store-select').value);
-            const adults = document.getElementById('adults').value;
-            const children = document.getElementById('children').value;
-            const prix_actuel = currentMenusData[currentDayBeingEdited][currentIndexBeingEdited].prix_par_personne;
-
-            try {
-                const response = await fetch('/api/modify-recipe', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        meal_name: currentMealName, 
-                        feedback: feedback, 
-                        prix_par_personne: prix_actuel,
-                        store_name: storeObj.nom, 
-                        adults: adults,
-                        children: children
-                    })
-                });
-                const data = await response.json();
-                if (data.status === "success") {
-                    currentMenusData[currentDayBeingEdited][currentIndexBeingEdited].nom = data.recipe.nom;
-                    currentMenusData[currentDayBeingEdited][currentIndexBeingEdited].prix_par_personne = data.recipe.prix_par_personne;
-                    currentMealName = data.recipe.nom;
+                    document.getElementById('modal-loader').classList.add('hidden');
+                    document.getElementById('modal-price-pp').innerText = Number(data.recipe.prix_par_personne).toFixed(2);
                     
-                    document.getElementById('modal-title').innerText = currentMealName;
-                    renderMenus();
-                    populateModal(data.recipe);
-                    document.getElementById('feedback-input').value = "";
-                } else { alert("Erreur de modification."); closeModal(); }
-            } catch (err) { alert("Erreur reseau."); closeModal(); }
-        }
-
-        function populateModal(recipe) {
-            document.getElementById('modal-loader').classList.add('hidden');
-            document.getElementById('modal-body').classList.remove('hidden');
-            
-            document.getElementById('modal-price-pp').innerText = recipe.prix_par_personne + " Euros";
-            document.getElementById('modal-price-total').innerText = recipe.prix_total + " Euros";
-            
-            const ingUl = document.getElementById('modal-ingredients');
-            ingUl.innerHTML = "";
-            (recipe.ingredients || []).forEach(i => {
-                const li = document.createElement('li'); li.innerText = i; ingUl.appendChild(li);
-            });
-            
-            const stepOl = document.getElementById('modal-instructions');
-            stepOl.innerHTML = "";
-            (recipe.etapes || []).forEach(e => {
-                const li = document.createElement('li'); li.innerText = e; stepOl.appendChild(li);
-            });
+                    data.recipe.ingredients.forEach(i => {
+                        const li = document.createElement('li'); li.innerText = i; document.getElementById('modal-ingredients').appendChild(li);
+                    });
+                    data.recipe.etapes.forEach(e => {
+                        const li = document.createElement('li'); li.innerText = e; document.getElementById('modal-instructions').appendChild(li);
+                    });
+                } else { closeModal(); alert("Erreur."); }
+            } catch (err) { closeModal(); alert("Erreur réseau."); }
         }
     </script>
 </body>

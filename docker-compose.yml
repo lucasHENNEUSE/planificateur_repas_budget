@@ -1,0 +1,14 @@
+version: '3.8'
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: frigo_eco_mongodb
+    restart: unless-stopped
+    command: ["--port", "27019"]
+    ports:
+      - "27019:27019"
+    volumes:
+      - frigo_eco_data:/data/db
+
+volumes:
+  frigo_eco_data:
