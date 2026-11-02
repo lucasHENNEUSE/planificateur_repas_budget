@@ -1,37 +1,39 @@
-# Nom de notre chaîne d'intégration continue (visible sur GitHub)
 name: Integration Continue - Tests Eco-Frigo
 
-# 1. DÉCLENCHEUR (Critère du référentiel C18 : "Définition des déclencheurs")
-# Le robot s'active automatiquement à chaque "push" (envoi de code) sur la branche principale (main).
 on:
   push:
     branches:
       - main
 
-# 2. TÂCHES (Critère du référentiel C18 : "Définition des étapes et tâches")
 jobs:
   tester_le_code:
-    # Le robot va allumer un mini-ordinateur virtuel sous Linux (Ubuntu)
     runs-on: ubuntu-latest
 
-    # Voici la liste des étapes que le robot va exécuter, l'une après l'autre
+    # --- VALIDATION C19 : PARAMÉTRAGE DE L'ENVIRONNEMENT ---
+    # Création d'une base de données MongoDB éphémère pour la CI
+    services:
+      mongodb:
+        image: mongo:latest
+        ports:
+          - 27019:27017 # Relie le port attendu par l'API (27019) au port MongoDB natif (27017)
+
     steps:
-      # Étape A : Le robot télécharge une copie de ton code source
       - name:  Récupérer le code source
         uses: actions/checkout@v3
 
-      # Étape B : Le robot installe le langage Python sur son ordinateur virtuel
       - name:  Installer Python 3.12
         uses: actions/setup-python@v4
         with:
           python-version: '3.12'
 
-      # Étape C : Le robot installe les librairies dont ton projet a besoin (FastAPI, Pytest, etc.)
       - name:  Installer les dépendances
         run: |
           pip install -r requirements.txt
           pip install pytest httpx
 
-      # Étape D : Le robot lance exactement la même commande que toi dans le terminal !
       - name:  Exécuter les tests automatisés (Pytest)
+        # Injection de variables d'environnement factices pour remplacer le .env ignoré
+        env:
+          SECRET_KEY: "cle_secrete_virtuelle_ci"
+          GEMINI_API_KEY: "fausse_cle_ia_pour_les_tests"
         run: pytest test_api.py -v
