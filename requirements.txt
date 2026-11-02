@@ -6,6 +6,7 @@ annotated-doc==0.0.5
 annotated-types==0.8.0
 anyio==4.14.2
 attrs==26.1.0
+bcrypt==5.0.0
 beautifulsoup4==4.15.0
 blinker==1.9.0
 certifi==2026.7.22
@@ -37,6 +38,7 @@ httptools==0.8.0
 httpx==0.28.1
 httpx-sse==0.4.3
 idna==3.19
+iniconfig==2.3.1
 itsdangerous==2.2.0
 Jinja2==3.1.6
 jsonpatch==1.33
@@ -64,7 +66,9 @@ orjson==3.12.0
 ormsgpack==1.12.2
 packaging==26.3
 pandas==3.0.5
+passlib==1.7.4
 pillow==12.3.0
+pluggy==1.7.0
 propcache==0.5.2
 proto-plus==1.28.2
 protobuf==5.29.6
@@ -76,8 +80,11 @@ pydantic==2.13.5
 pydantic-settings==2.15.0
 pydantic_core==2.46.5
 pydeck==0.9.3
+Pygments==2.21.0
+PyJWT==2.15.1
 pymongo==4.17.0
 pyparsing==3.3.2
+pytest==9.1.1
 python-dateutil==2.9.0.post0
 python-dotenv==1.2.3
 python-multipart==0.0.32
