@@ -9,8 +9,10 @@ from datetime import datetime, timedelta
 from fastapi import HTTPException, Security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
-# Clé secrète pour signer les jetons (à cacher dans un fichier .env en production)
-SECRET_KEY = os.getenv("SECRET_KEY", "super_cle_secrete_eco_frigo_2026")
+# Clé secrète pour signer les jetons : elle DOIT venir du fichier .env
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError("SECRET_KEY manquante : ajoute-la dans le fichier .env")
 ALGORITHM = "HS256"
 
 # Schéma de sécurité FastAPI pour intercepter les requêtes
