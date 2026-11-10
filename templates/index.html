@@ -236,11 +236,30 @@
             localStorage.removeItem("ecofrigo_token"); // On détruit le badge
             document.getElementById("step-config").classList.add("hidden");
             document.getElementById("step-menus").classList.add("hidden");
+            document.getElementById("loader").classList.add("hidden");
+            document.getElementById("recipe-modal").classList.add("hidden");
             document.getElementById("main-container").classList.remove("hidden");
             document.getElementById("auth-panel").classList.remove("hidden");
             document.getElementById("email").value = "";
             document.getElementById("password").value = "";
             document.getElementById("auth-error").innerText = "";
+        }
+
+        // Envoie une requête POST avec le jeton JWT.
+        // Si le jeton est refusé (expiré ou absent), on déconnecte l'utilisateur.
+        async function appelerApi(url, corps) {
+            const token = localStorage.getItem("ecofrigo_token");
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify(corps)
+            });
+            if (response.status === 401 || response.status === 403) {
+                alert("Session expirée. Veuillez vous reconnecter.");
+                seDeconnecter();
+                return null;
+            }
+            return response.json();
         }
 
         // -----------------------------------------
@@ -263,10 +282,8 @@
             
             select.innerHTML = "<option>Recherche...</option>";
             try {
-                const response = await fetch('/api/get-stores', { 
-                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ city }) 
-                });
-                const data = await response.json();
+                const data = await appelerApi('/api/get-stores', { city });
+                if (!data) return; // session expirée : l'utilisateur a été déconnecté
                 select.innerHTML = "";
                 if (data.status === "success" && data.stores.length > 0) {
                     data.stores.forEach(s => {
@@ -283,38 +300,19 @@
         async function generateMenus() {
             const rawValue = document.getElementById('store-select').value;
             if (!rawValue) return alert("Sélectionnez un magasin.");
-            
-            // ATTENTION ICI : On récupère le jeton JWT pour l'envoyer à l'API
-            const token = localStorage.getItem("ecofrigo_token");
-            if (!token) return seDeconnecter(); // Sécurité : si on a perdu le jeton, on déconnecte
 
             document.getElementById('step-config').classList.add('hidden');
             document.getElementById('loader').classList.remove('hidden');
 
             try {
-                const response = await fetch('/api/generate-menus', {
-                    method: 'POST', 
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        // C'est ici que la magie de la sécurité opère !
-                        'Authorization': `Bearer ${token}` 
-                    },
-                    body: JSON.stringify({ 
-                        store_name: JSON.parse(rawValue).nom, 
-                        budget: document.getElementById('budget').value,
-                        adults: document.getElementById('adults').value,
-                        children: document.getElementById('children').value
-                    })
+                const data = await appelerApi('/api/generate-menus', {
+                    store_name: JSON.parse(rawValue).nom,
+                    budget: document.getElementById('budget').value,
+                    adults: document.getElementById('adults').value,
+                    children: document.getElementById('children').value
                 });
-                
-                // Si l'API refuse le jeton (ex: expiré)
-                if (response.status === 401) {
-                    alert("Session expirée. Veuillez vous reconnecter.");
-                    return seDeconnecter();
-                }
+                if (!data) return; // session expirée : l'utilisateur a été déconnecté
 
-                const data = await response.json();
-                
                 if (data.status === "success") {
                     currentMenusData = data.menus;
                     renderFridgeInterior();
@@ -366,16 +364,13 @@
             document.getElementById('modal-loader').classList.remove('hidden');
 
             try {
-                const response = await fetch('/api/get-recipe', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        meal_name: meal.nom, 
-                        prix_par_personne: meal.prix_par_personne,
-                        adults: document.getElementById('adults').value,
-                        children: document.getElementById('children').value
-                    })
+                const data = await appelerApi('/api/get-recipe', {
+                    meal_name: meal.nom,
+                    prix_par_personne: meal.prix_par_personne,
+                    adults: document.getElementById('adults').value,
+                    children: document.getElementById('children').value
                 });
-                const data = await response.json();
+                if (!data) return; // session expirée : l'utilisateur a été déconnecté
                 if (data.status === "success") {
                     document.getElementById('modal-loader').classList.add('hidden');
                     document.getElementById('modal-price-pp').innerText = Number(data.recipe.prix_par_personne).toFixed(2);
