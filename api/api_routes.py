@@ -56,7 +56,7 @@ class ModifyRecipeRequest(BaseModel):
 # ==========================================
 
 @router.post("/register")
-async def register_user(data: UserLogin):
+def register_user(data: UserLogin):
     """
     **Création de compte sécurisée** : 
     Vérifie la complexité du mot de passe et s'assure que l'utilisateur n'existe pas déjà.
@@ -74,7 +74,7 @@ async def register_user(data: UserLogin):
     return {"status": "success", "details": "Compte créé avec succès."}
 
 @router.post("/login")
-async def login_user(data: UserLogin):
+def login_user(data: UserLogin):
     """
     **Authentification OWASP** : 
     Vérifie les identifiants en base et renvoie un jeton JWT valide 2 heures.
@@ -90,10 +90,10 @@ async def login_user(data: UserLogin):
     return {"status": "success", "token": create_access_token({"sub": email}), "email": email}
 
 @router.post("/get-stores")
-async def get_stores(data: StoreSearch):
+def get_stores(data: StoreSearch, current_user: dict = Depends(verify_token)):
     """
-    **Recherche de magasins** : 
-    Cherche les enseignes (Leclerc/Carrefour) via le cache ou l'IA Gemini.
+    **ROUTE PROTÉGÉE PAR JETON (JWT)** : 
+    Recherche de magasins : cherche les enseignes (Leclerc/Carrefour) via le cache ou l'IA Gemini.
     """
     city = data.city.strip()
     if not city:
@@ -120,7 +120,7 @@ async def get_stores(data: StoreSearch):
     return {"status": "success", "stores": stores_filtres}
 
 @router.post("/generate-menus")
-async def generate_menus(data: MenuRequest, current_user: dict = Depends(verify_token)):
+def generate_menus(data: MenuRequest, current_user: dict = Depends(verify_token)):
     """
     **ROUTE PROTÉGÉE PAR JETON (JWT)** : 
     Génère le menu de la semaine avec le moteur RAG en respectant le budget.
@@ -186,10 +186,10 @@ async def generate_menus(data: MenuRequest, current_user: dict = Depends(verify_
     return {"status": "success", "menus": menus_data}
 
 @router.post("/get-recipe")
-async def get_recipe(data: RecipeRequest):
+def get_recipe(data: RecipeRequest, current_user: dict = Depends(verify_token)):
     """
-    **Détail d'une recette** : 
-    Demande à l'IA de rédiger les étapes de cuisine pour un plat précis.
+    **ROUTE PROTÉGÉE PAR JETON (JWT)** : 
+    Détail d'une recette : demande à l'IA de rédiger les étapes de cuisine pour un plat précis.
     """
     meal_name = data.meal_name
     total_people = data.adults + data.children
@@ -209,10 +209,10 @@ async def get_recipe(data: RecipeRequest):
     return {"status": "success", "recipe": recipe_data}
 
 @router.post("/modify-recipe")
-async def modify_recipe(data: ModifyRecipeRequest):
+def modify_recipe(data: ModifyRecipeRequest, current_user: dict = Depends(verify_token)):
     """
-    **Personnalisation** : 
-    Met à jour les étapes d'une recette selon la demande de l'utilisateur.
+    **ROUTE PROTÉGÉE PAR JETON (JWT)** : 
+    Personnalisation : met à jour les étapes d'une recette selon la demande de l'utilisateur.
     """
     total_people = data.adults + data.children
     prix_unitaire = data.prix_par_personne
