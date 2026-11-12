@@ -1,3 +1,5 @@
+« Je suis parti d’une première version fonctionnelle : une API FastAPI avec authentification, une base MongoDB, un catalogue Open Food Facts, l’IA pour les recettes, des tests et une CI. Je l’ai analysée selon le Top 10 OWASP et le référentiel. J’ai trouvé des points à améliorer, je les ai classés par priorité dans mon backlog, et je les corrige sprint par sprint, chacun avec ses tests et sa pull request. »
+
 ## Analyse de l'existant et évolutions
 
 ### 1. Le code d'origine
