@@ -60,10 +60,12 @@ def test_recherche_magasin(mock_llm, mock_coll):
     assert len(donnees["stores"]) > 0
 
 # On intercepte l'appel à l'IA pour la génération de menus
+@patch("api.api_routes.count_products", return_value=100)  # catalogue déjà chargé
+@patch("api.api_routes.monitorer_ia_mlflow")
 @patch("api.api_routes.generer_menu_rag")
-def test_generation_menu_avec_mock(mock_rag):
+def test_generation_menu_avec_mock(mock_rag, mock_mlflow, mock_count):
     """
-    Test 4 (C12) : Simule l'IA pour tester le moteur RAG sans dépendance externe.
+    Test 4 (C12) : Simule le moteur de menus pour tester la route sans dépendance externe.
     """
     mock_rag.return_value = {
         "Lundi": [{"nom": "Plat de test simulé", "prix_par_personne": 2.5}]

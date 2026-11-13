@@ -1,158 +1,149 @@
 """
-rag_service.py : Génération de menus par algorithme adaptatif et filtré.
-GARANTIE 100% VRAIS PLATS SALÉS : Exclut tous les snacks, apéros et desserts.
+rag_service.py : génération des menus par RAG (Retrieval-Augmented Generation).
+
+1. RÉCUPÉRER : on choisit dans MongoDB des produits réels du magasin, avec leur prix.
+2. GÉNÉRER   : on donne ces produits à Gemini, qui compose les plats de la semaine.
+3. CONTRÔLER : le code vérifie les produits et recalcule lui-même le prix de chaque plat.
 """
 import random
 from data.database import menus_collection, get_store_products
+from IA.llm_service import appeler_gemini_json
 
-def generer_menu_rag(store_name: str, budget: str, total_people: int) -> dict:
-    budget_max = float(budget)
-    cache_key = f"menu_{store_name.lower().replace(' ', '_')}_b{budget}_p{total_people}"
-    
-    # 1. Vérification du cache
-    cached_menu = menus_collection.find_one({"type": "menu_cache", "key": cache_key})
-    if cached_menu and cached_menu.get("menus"):
-        return cached_menu["menus"]
+JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"]
 
-    # 2. Récupération des données brutes
-    db_products = get_store_products(store_name, limit=800)
+# Mots qui écartent un produit (desserts, boissons, snacks, condiments...)
+MOTS_EXCLUS = [
+    "yaourt", "chocolat", "biscuit", "bonbon", "glace", "sucre", "confiture",
+    "gâteau", "dessert", "lait", "boisson", "céréales", "compote", "crème",
+    "café", "thé", "jus", "soda", "cacao", "barre", "viennoiserie", "brioche",
+    "miel", "nutella", "caramel", "coca", "eau", "sirop", "chips", "apéro",
+    "apéritif", "cacahuète", "pistache", "amande", "noix", "sauce", "ketchup",
+    "mayo", "moutarde", "tartinable", "tapenade", "crostini", "toast", "snack",
+    "chewing", "sucette", "sablé", "tartelette", "gaufre", "crêpe", "confit",
+    "pâté", "rillettes", "saucisson", "chorizo", "pétillant", "infusion",
+    "vinaigrette", "vinaigre", "huile", "beurre", "margarine", "mayonnaise"
+]
 
-    # 3. LISTE ROUGE ULTRA AGRESSIVE : On élimine tous les "parasites"
-    mots_exclus = [
-        "yaourt", "chocolat", "biscuit", "bonbon", "glace", "sucre", "confiture",
-        "gâteau", "dessert", "lait", "boisson", "céréales", "compote", "crème",
-        "café", "thé", "jus", "soda", "cacao", "barre", "viennoiserie", "brioche",
-        "miel", "nutella", "caramel", "coca", "eau", "sirop", "chips", "apéro",
-        "apéritif", "cacahuète", "pistache", "amande", "noix", "sauce", "ketchup",
-        "mayo", "moutarde", "tartinable", "tapenade", "crostini", "toast", "snack",
-        "chewing", "sucette", "sablé", "tartelette", "gaufre", "crêpe", "confit",
-        "pâté", "rillettes", "saucisson", "chorizo", "pétillant", "infusion",
-        "vinaigrette", "vinaigre", "huile", "beurre", "margarine", "mayonnaise"
-    ]
+# Mots qui reconnaissent un plat principal (viande, poisson, oeufs...)
+MOTS_PLATS = [
+    "poulet", "boeuf", "porc", "poisson", "saumon", "thon", "colin", "jambon",
+    "dinde", "tofu", "oeuf", "steak", "haché", "saucisse", "filet", "viande",
+    "escalope", "cabillaud", "crevette", "canard", "veau", "agneau", "rôti",
+    "pavé", "merguez", "chipolata", "cordon bleu", "nuggets", "seitan", "tempeh",
+    "hoki", "lieu", "églefin", "sardine", "maquereau", "burger", "pizza", "quiche"
+]
 
-    # 4. LISTE BLANCHE (PROTÉINES / BASES DE PLATS)
-    mots_bases = [
-        "poulet", "boeuf", "porc", "poisson", "saumon", "thon", "colin", "jambon",
-        "dinde", "tofu", "oeuf", "steak", "haché", "saucisse", "filet", "viande",
-        "escalope", "cabillaud", "crevette", "canard", "veau", "agneau", "rôti",
-        "pavé", "merguez", "chipolata", "cordon bleu", "nuggets", "seitan", "tempeh",
-        "hoki", "lieu", "églefin", "sardine", "maquereau", "burger", "pizza", "quiche"
-    ]
+# Mots qui reconnaissent un accompagnement (légumes, féculents)
+MOTS_ACCOMPAGNEMENTS = [
+    "pâte", "riz", "pomme de terre", "semoule", "lentille", "tomate", "carotte",
+    "courgette", "haricot", "petit pois", "brocoli", "salade", "légume",
+    "champignon", "purée", "frite", "blé", "quinoa", "spaghetti", "macaroni",
+    "ebly", "boulgour", "pois chiche", "flageolet", "poireau", "aubergine", "chou",
+    "épinard", "navet", "potiron", "butternut", "penne", "coquillette", "tagliatelle"
+]
 
-    # 5. LISTE BLANCHE (ACCOMPAGNEMENTS / LÉGUMES / FÉCULENTS)
-    mots_accompagnements = [
-        "pâte", "riz", "pomme de terre", "semoule", "lentille", "tomate", "carotte",
-        "courgette", "haricot", "petit pois", "brocoli", "salade", "légume",
-        "champignon", "purée", "frite", "blé", "quinoa", "spaghetti", "macaroni",
-        "ebly", "boulgour", "pois chiche", "flageolet", "poireau", "aubergine", "chou",
-        "épinard", "navet", "potiron", "butternut", "penne", "coquillette", "tagliatelle"
-    ]
 
-    pool_bases = []
-    pool_accompagnements = []
-
-    # 6. FILTRAGE STRICT : Si ce n'est pas dans la liste blanche, on jette !
-    for p in db_products:
-        nom = p.get("nom", "").lower()
-        
-        # S'il y a un mot de la liste rouge -> Poubelle
-        if any(exclu in nom for exclu in mots_exclus):
+def recuperer_produits(store_name, budget_max):
+    """
+    Retourne 20 plats principaux et 20 accompagnements du magasin (choisis au hasard).
+    Un plat = 1 plat principal + 1 accompagnement : on ne garde que les produits à moins de
+    la moitié du budget, ce qui garantit que n'importe quelle combinaison respecte le budget.
+    """
+    plats, accompagnements = [], []
+    for produit in get_store_products(store_name, limit=800):
+        nom = produit["nom"].lower()
+        if any(mot in nom for mot in MOTS_EXCLUS) or produit["prix"] > budget_max / 2:
             continue
+        if any(mot in nom for mot in MOTS_PLATS):
+            plats.append(produit)
+        elif any(mot in nom for mot in MOTS_ACCOMPAGNEMENTS):
+            accompagnements.append(produit)
 
-        # Si c'est un vrai plat -> Dans la base
-        if any(mot in nom for mot in mots_bases):
-            pool_bases.append(p)
-        # Si c'est un vrai légume/féculent -> Dans l'accompagnement
-        elif any(mot in nom for mot in mots_accompagnements):
-            pool_accompagnements.append(p)
+    if not plats or not accompagnements:
+        raise ValueError("Pas assez de produits à ce prix dans ce magasin : augmentez le budget.")
 
-    # 7. PLAN DE SECOURS DE HAUTE QUALITÉ (Fini le random avec des yaourts !)
-    # Si l'API n'a pas trouvé assez de vrais ingrédients, on force des aliments génériques.
-    if not pool_bases:
-        pool_bases = [
-            {"nom": "Filet de Poulet fermier", "prix": 4.50},
-            {"nom": "Steak Haché pur boeuf", "prix": 3.80},
-            {"nom": "Pavé de Saumon", "prix": 5.50},
-            {"nom": "Escalope de Dinde", "prix": 3.50},
-            {"nom": "Omelette (Oeufs frais)", "prix": 2.00}
-        ]
-    if not pool_accompagnements:
-        pool_accompagnements = [
-            {"nom": "Spaghettis", "prix": 1.20},
-            {"nom": "Riz Basmati", "prix": 1.50},
-            {"nom": "Poêlée de Légumes du soleil", "prix": 2.50},
-            {"nom": "Pommes de terre grenailles", "prix": 2.00},
-            {"nom": "Lentilles corail", "prix": 1.80}
-        ]
+    random.shuffle(plats)
+    random.shuffle(accompagnements)
+    return plats[:20], accompagnements[:20]
 
-    random.shuffle(pool_bases)
-    random.shuffle(pool_accompagnements)
 
-    jours = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"]
-    menus_data = {}
-    index_base = 0
-    index_acc = 0
+def construire_prompt(plats, accompagnements, budget_max, total_people, remarques=""):
+    """Écrit la consigne donnée à Gemini : les produits disponibles + les règles."""
+    liste_plats = "\n".join(f"- {p['nom']} : {p['prix']:.2f} €" for p in plats)
+    liste_acc = "\n".join(f"- {p['nom']} : {p['prix']:.2f} €" for p in accompagnements)
+    return f"""Tu composes les repas de la semaine pour {total_people} personnes.
+Budget maximum : {budget_max:.2f} € par personne et par plat.
 
-    # 8. ASSEMBLAGE DES VRAIS PLATS
-    for jour in jours:
-        options = []
-        for num_option in [1, 2]:
-            if index_base >= len(pool_bases): index_base = 0
-            if index_acc >= len(pool_accompagnements): index_acc = 0
+PRODUITS DISPONIBLES (nom exact : prix par personne)
+Plats principaux :
+{liste_plats}
+Accompagnements :
+{liste_acc}
 
-            prod_base = pool_bases[index_base]
-            prod_acc = pool_accompagnements[index_acc]
+Propose 2 plats différents pour chaque jour, de Lundi à Dimanche.
+RÈGLES :
+1. Chaque plat utilise exactement 2 produits de la liste : un plat principal et un accompagnement, avec leur nom exact. N'invente aucun produit.
+2. Le nom du plat est un vrai nom de plat français (ex : "Poulet rôti, riz et carottes"), pas un nom de produit.
+3. Réponds uniquement en JSON, de cette forme :
+{{"Lundi": [{{"nom": "...", "produits": ["nom exact", "nom exact"]}}, {{"nom": "...", "produits": ["nom exact", "nom exact"]}}], "Mardi": [...]}}
+{remarques}"""
 
-            # Sécurité : ne pas mettre "Poulet" accompagné de "Poulet"
-            if prod_base["nom"] == prod_acc["nom"] and len(pool_accompagnements) > 1:
-                index_acc = (index_acc + 1) % len(pool_accompagnements)
-                prod_acc = pool_accompagnements[index_acc]
 
-            prix_base = float(prod_base.get("prix", 3.0))
-            prix_acc = float(prod_acc.get("prix", 1.5))
-            prix_total = prix_base + prix_acc
-
-            plat_ingredients = [
-                f"1 portion de {prod_base['nom'].strip()}",
-                f"1 portion de {prod_acc['nom'].strip()}"
-            ]
-
-            # Recalcul budgétaire
-            if prix_total > budget_max:
-                prix_total = budget_max * random.uniform(0.85, 0.98)
-            elif prix_total < (budget_max * 0.60):
-                prix_total = budget_max * random.uniform(0.80, 0.95)
-                plat_ingredients.append("Portion extra généreuse (Pour atteindre votre budget)")
-
-            prix_total = round(prix_total, 2)
-
-            nom_plat = f"{prod_base['nom'].strip().capitalize()} et son accompagnement de {prod_acc['nom'].strip().lower()}"
-
-            etapes = [
-                f"Préparer la base : {prod_base['nom'].strip()}.",
-                f"Cuisiner l'accompagnement : {prod_acc['nom'].strip()}.",
-                "Faire revenir à la poêle ou au four avec un filet d'huile d'olive.",
-                "Assaisonner et servir bien chaud."
-            ]
-
-            options.append({
-                "option": num_option,
-                "nom": nom_plat,
-                "prix_par_personne": prix_total,
-                "ingredients": plat_ingredients,
-                "etapes": etapes
+def verifier_menu(menu_ia, catalogue, budget_max):
+    """
+    Contrôle la réponse de l'IA. Retourne (menu, problemes).
+    catalogue : {nom du produit en minuscules : produit}
+    """
+    menu, problemes = {}, []
+    for jour in JOURS:
+        menu[jour] = []
+        for numero, plat in enumerate(menu_ia[jour], start=1):
+            prix = 0
+            for nom_produit in plat["produits"]:
+                produit = catalogue.get(nom_produit.strip().lower())
+                if produit is None:
+                    problemes.append(f"{jour} : le produit « {nom_produit} » n'est pas dans la liste")
+                else:
+                    prix += produit["prix"]
+            if prix > budget_max:
+                problemes.append(f"{jour} : le plat « {plat['nom']} » coûte {prix:.2f} €, au-dessus du budget")
+            menu[jour].append({
+                "option": numero,
+                "nom": plat["nom"],
+                "prix_par_personne": round(prix, 2),
+                "ingredients": plat["produits"]
             })
+    return menu, problemes
 
-            index_base += 1
-            index_acc += 1
 
-        menus_data[jour] = options
+def generer_menu_rag(store_name, budget, total_people):
+    """Retourne le menu de la semaine {jour: [plat 1, plat 2]}. Lève une erreur si l'IA échoue."""
+    budget_max = float(budget)
+    cle = f"menu_v2_{store_name.lower().replace(' ', '_')}_b{budget}_p{total_people}"
 
-    # 9. SAUVEGARDE EN BASE
-    menus_collection.update_one(
-        {"type": "menu_cache", "key": cache_key},
-        {"$set": {"menus": menus_data, "enseigne": store_name}},
-        upsert=True
-    )
+    # Cache : si ce menu existe déjà, on n'appelle pas l'IA (économie de quota)
+    en_cache = menus_collection.find_one({"type": "menu_cache", "key": cle})
+    if en_cache:
+        return en_cache["menus"]
 
-    return menus_data
+    plats, accompagnements = recuperer_produits(store_name, budget_max)
+    catalogue = {p["nom"].strip().lower(): p for p in plats + accompagnements}
+
+    # 2 essais au maximum : si le contrôle trouve des erreurs, on les renvoie à l'IA
+    remarques = ""
+    for _ in range(2):
+        reponse = appeler_gemini_json(construire_prompt(plats, accompagnements, budget_max, total_people, remarques))
+        if not reponse:
+            raise RuntimeError("Gemini n'a pas répondu (clé invalide, quota atteint ou service indisponible : voir le terminal).")
+
+        menu, problemes = verifier_menu(reponse, catalogue, budget_max)
+        if not problemes:
+            menus_collection.update_one(
+                {"type": "menu_cache", "key": cle},
+                {"$set": {"menus": menu, "enseigne": store_name}},
+                upsert=True
+            )
+            return menu
+        remarques = "Ta réponse précédente contenait des erreurs, corrige-les :\n- " + "\n- ".join(problemes)
+
+    raise ValueError("Menu refusé après correction : " + " ; ".join(problemes[:3]))

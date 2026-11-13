@@ -1,5 +1,6 @@
 import os
 import json
+import time
 from typing import Optional
 from google import genai
 from google.genai import types
@@ -8,38 +9,32 @@ from google.genai import types
 # Récupération de la clé API et initialisation du client Gemini
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 gemini_client = genai.Client(api_key=GOOGLE_API_KEY) if GOOGLE_API_KEY else None
-CLOUD_AI_MODEL = 'gemini-3.8-flash'
+CLOUD_AI_MODEL = 'gemini-3.5-flash-lite'
 
 def appeler_gemini_json(prompt: str) -> Optional[dict]:
     """
     Envoie un prompt au modèle Gemini et force une réponse au format JSON.
-    Gère aussi le nettoyage si l'IA rajoute des balises Markdown par erreur.
+    Si Gemini est surchargé (erreur 503), on réessaie jusqu'à 3 fois.
+    Retourne None si l'appel échoue.
     """
     if not gemini_client:
         print("Erreur : Clé API Google non trouvée.")
         return None
-    
-    try:
-        # Demande à Gemini de répondre uniquement en JSON
-        response = gemini_client.models.generate_content(
-            model=CLOUD_AI_MODEL,
-            contents=prompt,
-            config=types.GenerateContentConfig(response_mime_type="application/json")
-        )
-        
-        content = response.text.strip()
-        
-        # Nettoyage des balises de code Markdown si présentes
-        if content.startswith("```json"):
-            content = content[7:-3].strip()
-        elif content.startswith("```"):
-            content = content[3:-3].strip()
-            
-        return json.loads(content)
-        
-    except Exception as e:
-        print(f"Erreur lors de l'appel LLM Gemini : {str(e)}")
-        return None
+
+    for essai in range(3):
+        try:
+            response = gemini_client.models.generate_content(
+                model=CLOUD_AI_MODEL,
+                contents=prompt,
+                config=types.GenerateContentConfig(response_mime_type="application/json")
+            )
+            return json.loads(response.text)
+        except Exception as e:
+            print(f"Erreur lors de l'appel LLM Gemini : {str(e)}")
+            if "503" not in str(e):
+                return None   
+            time.sleep(3)     # Gemini surchargé : on attend un peu avant de réessayer
+    return None
 
 # --- FONCTIONS MÉTIERS (Prompts) ---
 
@@ -62,24 +57,11 @@ RÈGLES STRICTES :
 
 def rediger_recette_depuis_llm(meal_name: str, total_people: int):
     """
-    Demande à l'IA de rédiger les ingrédients et étapes pour un plat spécifique.
-    Retourne un objet contenant la recette, ou une recette par défaut en cas d'erreur.
+    Demande à l'IA les ingrédients et les étapes d'un plat.
+    Retourne {"ingredients": [...], "etapes": [...]}, ou None si l'IA échoue.
     """
-    prompt = f"""Rédige la recette pour : "{meal_name}" pour {total_people} personnes.
-Réponds STRICTEMENT sous format JSON valide :
-{{
-  "ingredients": ["1 kg de poulet", "800g de pommes de terre"],
-  "etapes": ["Préchauffer le four.", "Cuire 1 heure."]
-}}"""
-    try:
-        resultat = appeler_gemini_json(prompt)
-        if resultat:
-            return resultat
-    except Exception:
-        pass
-        
-    # Plan de secours si le LLM échoue à rédiger la recette
-    return {
-        "ingredients": ["Ingrédients standard du magasin"],
-        "etapes": ["Préparer les ingrédients", "Cuire à feu moyen", "Servir chaud"]
-    }
+    prompt = f"""Rédige une recette simple et réaliste, en français, pour : "{meal_name}", pour {total_people} personnes.
+Donne des quantités réalistes et 4 à 7 étapes claires (avec temps et températures de cuisson).
+Réponds uniquement en JSON, de cette forme :
+{{"ingredients": ["800 g de filet de poulet", "300 g de riz"], "etapes": ["Préchauffer le four à 200 °C.", "Cuire le riz 12 minutes."]}}"""
+    return appeler_gemini_json(prompt)
