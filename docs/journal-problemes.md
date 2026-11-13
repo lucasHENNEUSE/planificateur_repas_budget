@@ -47,3 +47,46 @@
 - **Cause :** Chrome demande ce fichier quand ses outils de développement sont ouverts. Mon site ne le propose pas.
 - **Solution :** aucune, l'application fonctionne normalement.
 - **Ce que j'ai appris :** lire un message d'erreur en entier avant de conclure à un bug.
+
+
+
+....................................................................................
+
+
+### Problème 1 : les menus et les recettes étaient de mauvaise qualité
+ 
+- **Ce que j'ai vu :** les plats ressemblaient à des noms de produits collés ensemble, par exemple « Herta knacki veggie saucisses x6 -210g et son accompagnement de boulgour ». Les recettes avaient toujours les mêmes quatre phrases.
+- **Cause :** le moteur ne faisait pas appel à l'IA. Il prenait deux noms de produits et les collait. Les prix venaient d'une formule, ils étaient inventés. De plus, quand l'IA échouait pour une recette, une fausse recette était enregistrée et resservie ensuite.
+- **Solution :** le moteur de menus fonctionne maintenant en trois temps. D'abord, on choisit des produits réels du magasin dans la base. Ensuite, l'IA (Gemini) compose les plats avec ces produits. Enfin, le code vérifie que les produits existent et recalcule le prix lui-même. Si l'IA échoue, on affiche une erreur et on n'enregistre plus de fausse recette.
+- **Preuve :** 6 nouveaux tests automatiques vérifient ce contrôle (produit inventé refusé, plat trop cher refusé, une correction demandée à l'IA, rien enregistré si l'IA ne répond pas).
+- **Ce que j'en retiens :** on ne doit jamais faire confiance à une réponse d'IA sans la contrôler.
+### Problème 2 : la clé de l'IA était refusée
+ 
+- **Ce que j'ai vu :** le message « API key not valid » dans le terminal, et les menus ne se généraient plus.
+- **Cause :** la variable `GOOGLE_API_KEY` du fichier `.env` contenait une mauvaise valeur : une ancienne clé secrète collée sous le mauvais nom. Ce n'était pas une clé Google.
+- **Solution :** une nouvelle clé a été créée dans Google AI Studio et mise dans `.env`. Pour vérifier sans l'afficher, on affiche seulement ses 4 premiers caractères.
+- **Autre point :** la ligne `SECRET_KEY` avait disparu du fichier, et l'application a refusé de démarrer. C'est voulu : cela évite de lancer le site sans clé de sécurité. La ligne a été recréée avec une valeur aléatoire.
+- **Ce que j'en retiens :** je ne montre jamais le contenu de `.env`, ni dans un message ni dans une capture.
+### Problème 3 : Google répondait « modèle surchargé » (erreur 503)
+ 
+- **Ce que j'ai vu :** « 503 UNAVAILABLE : le modèle subit une forte demande ».
+- **Cause :** une surcharge temporaire chez Google. Ce n'était pas une erreur de mon code ni de ma clé.
+- **Solution :** l'application réessaie toute seule jusqu'à 3 fois, avec 3 secondes d'attente, mais seulement pour cette erreur. Les autres erreurs (clé, quota) ne sont pas répétées, pour ne pas gaspiller le quota gratuit. Un modèle plus léger de la même famille, `gemini-3.5-flash-lite`, a aussi été testé et a fonctionné.
+- **Ce que j'en retiens :** un service externe peut tomber en panne. Il faut prévoir un nouvel essai et un message clair.
+### Problème 4 : l'IA proposait des plats trop chers
+ 
+- **Ce que j'ai vu :** « Menu refusé : le plat coûte 4.50 €, au-dessus du budget » (budget de 4 €), deux fois de suite.
+- **Cause :** l'IA calcule mal les additions. Mon contrôle a bien refusé les plats, mais la génération échouait.
+- **Solution :** avant d'appeler l'IA, le code retire les produits trop chers : un produit ne doit pas dépasser la moitié du budget. Comme un plat = 1 plat principal + 1 accompagnement, toute combinaison respecte alors le budget. C'est le code qui garantit le budget, pas l'IA.
+- **Petit incident :** une mise à jour de fichier n'avait pas été faite et l'ancienne version tournait encore. On l'a repéré avec la commande `grep`, qui cherche une ligne dans un fichier.
+- **Ce que j'en retiens :** je laisse le code faire les calculs, et je vérifie toujours que le bon fichier est en place.
+### Problème 5 : des informations privées visibles dans des captures
+ 
+- **Ce que j'ai vu :** mon adresse e-mail apparaissait sur une capture d'écran, et le contenu du fichier `.env` sur une autre.
+- **Solution :** l'e-mail est flouté dans le document. La clé visible a été remplacée. Nouvelle règle : fermer `.env` avant une capture et utiliser un compte de test.
+- **Suite :** une carte est prévue pour ne plus écrire les e-mails en clair dans les logs.
+### Problème 6 : l'interface n'était pas accessible
+ 
+- **Ce que j'ai vu :** en relisant `index.html`, les champs n'avaient pas d'étiquette, les messages d'erreur n'étaient pas annoncés aux lecteurs d'écran, les boutons « + » et « - » n'avaient pas de nom, et la fenêtre de recette ne gérait pas le clavier.
+- **Solution :** étiquettes ajoutées, messages annoncés, noms ajoutés sur les boutons, fenêtre de recette fermée avec la touche Échap, cadre de focus visible, couleurs plus foncées pour le contraste. Les textes de l'IA sont aussi affichés comme du texte simple (plus de risque d'injection de code).
+- **Preuve :** captures annotées dans `docs/analyse/wireframes.md`.
