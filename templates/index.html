@@ -6,14 +6,14 @@
     <title>Éco-Frigo | Planificateur Intelligent</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        /* (Le design ne change pas) */
+        /* Couleurs choisies pour un contraste d'au moins 4,5:1 sur fond clair (WCAG 1.4.3) */
         :root {
-            --primary: #10b981; --primary-hover: #059669; --primary-light: #d1fae5;
-            --secondary: #f43f5e; --secondary-hover: #e11d48;
-            --bg-body: #f8fafc; --bg-card: #ffffff;
-            --text-dark: #0f172a; --text-gray: #64748b; --border-light: #e2e8f0;
-            --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.05); --shadow-md: 0 10px 25px -5px rgba(0, 0, 0, 0.1); --shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-            --radius-lg: 20px; --radius-md: 12px;
+            --primary: #047857;
+            --secondary: #be123c;
+            --bg-body: #f8fafc;
+            --text-dark: #0f172a; --text-gray: #475569; --border-light: #e2e8f0;
+            --border-field: #64748b; /* contour des champs : contraste 3:1 minimum (WCAG 1.4.11) */
+            --blue: #0369a1;
         }
 
         body { font-family: 'Outfit', sans-serif; background-color: var(--bg-body); color: var(--text-dark); margin: 0; padding: 40px 20px; line-height: 1.6; overflow-x: hidden; }
@@ -21,54 +21,69 @@
         .shape1 { width: 400px; height: 400px; background: #bae6fd; top: -100px; left: -100px; }
         .shape2 { width: 500px; height: 500px; background: #d9f99d; bottom: -150px; right: -100px; animation-delay: -5s; }
         @keyframes float { 0% { transform: translate(0, 0) scale(1); } 100% { transform: translate(50px, 80px) scale(1.1); } }
+        /* Pour les personnes qui demandent moins d'animations dans leur système */
+        @media (prefers-reduced-motion: reduce) { .bg-shape { animation: none; } }
+
+        /* Focus clavier toujours bien visible (WCAG 2.4.7) */
+        :focus-visible { outline: 3px solid #1d4ed8; outline-offset: 3px; }
+        /* Les titres et messages qui reçoivent le focus par programme (tabindex="-1") n'ont pas besoin de cadre :
+           on ne peut pas les atteindre à la touche Tab, ce n'est donc pas un élément interactif */
+        [tabindex="-1"]:focus { outline: none; }
 
         .container { max-width: 850px; margin: auto; background: rgba(255, 255, 255, 0.95); padding: 45px; border-radius: 24px; box-shadow: 0 20px 40px rgba(14, 165, 233, 0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.5); position: relative; z-index: 1; }
         .header { text-align: center; margin-bottom: 40px; }
         .header h1 { font-weight: 800; font-size: 2.8rem; margin: 0 0 10px 0; color: var(--primary); letter-spacing: -1px;}
-        .header p { color: var(--text-muted); margin: 0; font-size: 1.15rem; }
+        .header p { color: var(--text-gray); margin: 0; font-size: 1.15rem; }
 
         h2 { font-size: 1.3rem; margin: 0 0 15px 0; font-weight: 600; display: flex; align-items: center; gap: 10px; color: #334155;}
         .step-section { background: white; padding: 25px; border-radius: 16px; border: 1px solid var(--border-light); margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
-        .form-group { margin-bottom: 20px; }
-        label { display: block; font-weight: 500; margin-bottom: 8px; font-size: 0.95rem; color: #475569;}
-        
+        label, .field-label { display: block; font-weight: 500; margin-bottom: 8px; font-size: 0.95rem; color: #475569;}
+
         .input-group { display: flex; gap: 15px; }
-        input[type="text"], input[type="password"], select, input[type="number"] { width: 100%; padding: 16px; border: 2px solid var(--border-light); border-radius: 12px; box-sizing: border-box; font-family: inherit; font-size: 1rem; transition: 0.2s; background: #f8fafc; }
-        input:focus, select:focus { border-color: var(--primary); outline: none; background: white; }
+        input[type="text"], input[type="email"], input[type="password"], select, input[type="number"] { width: 100%; padding: 16px; border: 2px solid var(--border-field); border-radius: 12px; box-sizing: border-box; font-family: inherit; font-size: 1rem; background: #f8fafc; }
 
         .counter-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;}
-        .counter-wrapper { display: flex; align-items: center; justify-content: space-between; background: #f8fafc; border: 2px solid var(--border-light); border-radius: 12px; padding: 6px; }
-        .counter-btn { background: white; border: 1px solid var(--border-light); width: 40px; height: 40px; border-radius: 8px; font-size: 1.5rem; cursor: pointer; color: var(--primary); }
+        .counter-wrapper { display: flex; align-items: center; justify-content: space-between; background: #f8fafc; border: 2px solid var(--border-field); border-radius: 12px; padding: 6px; }
+        .counter-btn { background: white; border: 1px solid var(--border-field); width: 40px; height: 40px; border-radius: 8px; font-size: 1.5rem; cursor: pointer; color: var(--primary); }
         .counter-val { font-weight: 700; font-size: 1.3rem; width: 40px; text-align: center; color: var(--text-dark);}
 
         .btn-search { background: var(--primary); color: white; border: none; padding: 0 25px; border-radius: 12px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px;}
-        .btn-main { background: linear-gradient(135deg, var(--primary), #3b82f6); color: white; border: none; padding: 20px; border-radius: 16px; cursor: pointer; font-weight: 600; font-size: 1.15rem; width: 100%; display: flex; justify-content: center; align-items: center; gap: 12px; margin-top: 10px;}
+        .btn-main { background: linear-gradient(135deg, var(--primary), #1d4ed8); color: white; border: none; padding: 20px; border-radius: 16px; cursor: pointer; font-weight: 600; font-size: 1.15rem; width: 100%; display: flex; justify-content: center; align-items: center; gap: 12px; margin-top: 10px;}
+        .btn-main:disabled { background: #e2e8f0; color: #475569; cursor: not-allowed; }
         .btn-outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); padding: 10px 20px; font-size: 0.95rem; border-radius: 8px; cursor: pointer; width: 100%;}
-        
-        .icon { width: 22px; height: 22px; fill: currentColor; }
+        .btn-link { background: none; border: none; color: var(--secondary); cursor: pointer; font-weight: 600; font-size: 1rem; text-decoration: underline; }
+
         .hidden { display: none !important; }
 
+        /* Messages : toujours du texte, la couleur ne fait que renforcer (WCAG 1.4.1) */
+        .msg-error { color: var(--secondary); font-weight: 500; margin: 15px 0 0 0; }
+        .msg-ok { color: var(--primary); font-weight: 500; margin: 15px 0 0 0; }
+
         .loader-container { text-align: center; padding: 60px 0; display: flex; flex-direction: column; align-items: center; }
-        
+        .loader-container h2 { color: var(--primary); font-size: 1.5rem; justify-content: center; }
+
         /* Les Tupperwares dans le frigo */
         .fridge-interior { background: linear-gradient(180deg, #ffffff 0%, #e0f2fe 100%); border: 16px solid #cbd5e1; border-radius: 24px; padding: 40px 25px; min-height: 600px;}
-        .fridge-title { text-align: center; color: #0284c7; font-size: 2.2rem; margin: 0 0 40px 0; font-weight: 700; }
+        .fridge-title { text-align: center; color: var(--blue); font-size: 2.2rem; margin: 0 0 40px 0; font-weight: 700; display: block; }
         .shelf { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 25px; padding-bottom: 25px; margin-bottom: 35px; border-bottom: 8px solid rgba(255,255,255,0.7); }
         .day-box { background: rgba(255, 255, 255, 0.9); border: 1px solid white; border-radius: 16px; padding: 25px; box-shadow: 0 8px 20px rgba(0,0,0,0.05); }
-        .day-title { font-size: 1.3rem; font-weight: 700; color: #0ea5e9; text-transform: uppercase; margin: 0 0 20px 0; border-bottom: 2px dashed #bae6fd; padding-bottom: 10px; }
+        .day-title { font-size: 1.3rem; font-weight: 700; color: var(--blue); text-transform: uppercase; margin: 0 0 20px 0; border-bottom: 2px dashed #bae6fd; padding-bottom: 10px; display: block; }
         .meal-option { background: #f8fafc; border-radius: 12px; padding: 15px; margin-bottom: 15px; border: 1px solid #e2e8f0; }
-        .meal-badge { font-size: 0.75rem; font-weight: 700; background: #e0f2fe; color: #0ea5e9; padding: 4px 10px; border-radius: 20px; display: inline-block; margin-bottom: 10px; }
+        .meal-badge { font-size: 0.75rem; font-weight: 700; background: #e0f2fe; color: var(--blue); padding: 4px 10px; border-radius: 20px; display: inline-block; margin-bottom: 10px; }
         .meal-name { font-size: 1rem; font-weight: 600; color: #1e293b; margin-bottom: 10px; line-height: 1.4;}
-        .meal-price { font-size: 0.95rem; font-weight: 700; color: #059669; margin-bottom: 15px; }
+        .meal-price { font-size: 0.95rem; font-weight: 700; color: var(--primary); margin-bottom: 15px; }
+        .list-info { text-align: center; color: #334155; margin: 10px 0 0 0; }
 
-        /* Modale */
+        /* Fenêtre de recette */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.85); display: flex; align-items: center; justify-content: center; z-index: 1000; }
         .modal-content { background: white; border-radius: 12px; width: 95%; max-width: 600px; max-height: 85vh; overflow-y: auto; padding: 30px; position: relative;}
-        .btn-close { position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 2rem; cursor: pointer; color: #94a3b8; }
-        
+        .btn-close { position: absolute; top: 15px; right: 15px; background: white; border: 2px solid #475569; border-radius: 8px; padding: 6px 12px; font-size: 1rem; font-weight: 600; cursor: pointer; color: #334155; }
+
         /* Ecran de connexion */
-        .auth-container { max-width: 400px; margin: 0 auto; text-align: center; }
+        .auth-container { max-width: 400px; margin: 0 auto; }
         .auth-container h2 { justify-content: center; font-size: 1.8rem; margin-bottom: 20px;}
+        .auth-container p.intro { color: var(--text-gray); margin-bottom: 20px; text-align: center; }
+        .auth-container .form-group { margin-bottom: 15px; }
     </style>
 </head>
 <body>
@@ -77,102 +92,125 @@
 
     <div class="container" id="main-container">
         <div class="header">
-            <h1>Éco-Frigo</h1>
+            <h1 id="titre-appli" tabindex="-1">Éco-Frigo</h1>
             <p>Le planificateur intelligent de vos repas.</p>
         </div>
 
         <!-- 1. ÉCRAN DE CONNEXION (Sécurité OWASP) -->
         <div id="auth-panel" class="auth-container">
-            <h2>Accès Sécurisé</h2>
-            <p style="color: var(--text-gray); margin-bottom: 20px;">Connectez-vous pour générer vos menus.</p>
-            
-            <input type="text" id="email" placeholder="Adresse Email" style="margin-bottom: 15px;">
-            <input type="password" id="password" placeholder="Mot de passe (min. 6 caractères)" style="margin-bottom: 20px;">
-            
+            <h2>Accès sécurisé</h2>
+            <p class="intro">Connectez-vous pour générer vos menus.</p>
+
+            <div class="form-group">
+                <label for="email">Adresse e-mail</label>
+                <input type="email" id="email" autocomplete="email">
+            </div>
+            <div class="form-group">
+                <label for="password">Mot de passe (6 caractères minimum)</label>
+                <input type="password" id="password" autocomplete="current-password">
+            </div>
+
             <button class="btn-main" onclick="authentifier('login')" style="margin-bottom: 10px;">Se connecter</button>
             <button class="btn-outline" onclick="authentifier('register')">Créer un compte</button>
-            
-            <div id="auth-error" style="color: var(--secondary); margin-top: 15px; font-weight: 500;"></div>
+
+            <!-- role="alert" : le message est lu automatiquement par les lecteurs d'écran -->
+            <div id="auth-error" role="alert" class="msg-error"></div>
         </div>
-        
+
         <!-- 2. ÉCRAN CONFIGURATION (Caché au départ) -->
         <div id="step-config" class="hidden">
-            <!-- Bouton pour se déconnecter -->
             <div style="text-align: right; margin-bottom: 15px;">
-                <button onclick="seDeconnecter()" style="background: none; border: none; color: var(--secondary); cursor: pointer; font-weight: 600;">Se déconnecter</button>
+                <button class="btn-link" onclick="seDeconnecter()">Se déconnecter</button>
             </div>
 
             <div class="step-section">
                 <h2>1. Où faites-vous vos courses ?</h2>
+                <label for="city">Ville</label>
                 <div class="input-group">
-                    <input type="text" id="city" placeholder="Ex: Brest, Paris, Lyon...">
+                    <input type="text" id="city" autocomplete="address-level2">
                     <button type="button" class="btn-search" onclick="loadStores()">Chercher</button>
                 </div>
+                <!-- role="status" : le résultat de la recherche est annoncé sans déplacer le focus -->
+                <p id="store-status" role="status" class="msg-ok"></p>
                 <div style="margin-top: 15px;">
+                    <label for="store-select">Enseigne</label>
                     <select id="store-select"><option value="">-- Choisissez l'enseigne --</option></select>
                 </div>
             </div>
 
             <div class="step-section">
-                <h2>2. Foyer et Budget</h2>
+                <h2>2. Foyer et budget</h2>
                 <div class="counter-grid">
-                    <div>
-                        <label>Adultes</label>
+                    <div role="group" aria-labelledby="adults-label">
+                        <span class="field-label" id="adults-label">Adultes</span>
                         <div class="counter-wrapper">
-                            <button class="counter-btn" onclick="updateCounter('adults', -1)">-</button>
-                            <span class="counter-val" id="adults-val">2</span>
-                            <button class="counter-btn" onclick="updateCounter('adults', 1)">+</button>
+                            <button class="counter-btn" aria-label="Retirer un adulte" onclick="updateCounter('adults', -1)">-</button>
+                            <span class="counter-val" id="adults-val" aria-live="polite">2</span>
+                            <button class="counter-btn" aria-label="Ajouter un adulte" onclick="updateCounter('adults', 1)">+</button>
                             <input type="hidden" id="adults" value="2">
                         </div>
                     </div>
-                    <div>
-                        <label>Enfants</label>
+                    <div role="group" aria-labelledby="children-label">
+                        <span class="field-label" id="children-label">Enfants</span>
                         <div class="counter-wrapper">
-                            <button class="counter-btn" onclick="updateCounter('children', -1)">-</button>
-                            <span class="counter-val" id="children-val">1</span>
-                            <button class="counter-btn" onclick="updateCounter('children', 1)">+</button>
+                            <button class="counter-btn" aria-label="Retirer un enfant" onclick="updateCounter('children', -1)">-</button>
+                            <span class="counter-val" id="children-val" aria-live="polite">1</span>
+                            <button class="counter-btn" aria-label="Ajouter un enfant" onclick="updateCounter('children', 1)">+</button>
                             <input type="hidden" id="children" value="1">
                         </div>
                     </div>
                 </div>
                 <div style="margin-top: 15px;">
-                    <label>Budget max par personne (€)</label>
+                    <label for="budget">Budget maximum par personne (€)</label>
                     <input type="number" id="budget" value="4.0" step="0.5" min="1.0">
                 </div>
             </div>
 
+            <div id="config-error" role="alert" class="msg-error"></div>
             <button class="btn-main" onclick="generateMenus()">Ouvrir le frigo et générer le menu</button>
         </div>
 
-        <div id="loader" class="loader-container hidden">
-            <h3 style="color:var(--primary); font-size: 1.5rem;">Génération en cours...</h3>
-            <p>Veuillez patienter.</p>
+        <!-- Chargement : annoncé par les lecteurs d'écran (role="status") -->
+        <div id="loader" class="loader-container hidden" role="status">
+            <h2>Génération en cours...</h2>
+            <p>Veuillez patienter, cela peut prendre quelques secondes.</p>
+        </div>
+
+        <!-- Échec de la génération : message clair + possibilité de réessayer -->
+        <div id="gen-error" class="loader-container hidden" tabindex="-1" role="alert">
+            <p id="gen-error-text" class="msg-error" style="margin-top: 0;"></p>
+            <button class="btn-main" style="width: auto; padding: 15px 40px;" onclick="generateMenus()">Réessayer</button>
         </div>
     </div>
 
     <!-- 3. INTÉRIEUR DU FRIGO (Les Menus) -->
     <div id="step-menus" class="container hidden" style="max-width: 1050px; background: transparent; border: none; box-shadow: none;">
         <div class="fridge-interior">
-            <h2 class="fridge-title" id="menu-title">Votre Frigo</h2>
+            <h1 class="fridge-title" id="menu-title" tabindex="-1">Votre frigo : menus de la semaine</h1>
             <div id="fridge-shelves-container"></div>
-            <button class="btn-main" style="width: auto; margin: 30px auto 0;">Valider et créer la liste de courses</button>
+            <!-- Cette fonction n'existe pas encore (US9) : bouton désactivé et expliqué -->
+            <div style="text-align: center;">
+                <button class="btn-main" style="width: auto; margin: 30px auto 0;" disabled aria-describedby="liste-info">Valider et créer la liste de courses</button>
+                <p id="liste-info" class="list-info">Fonction bientôt disponible.</p>
+            </div>
         </div>
     </div>
 
-    <!-- 4. MODALE DE RECETTE -->
+    <!-- 4. FENÊTRE DE RECETTE -->
     <div id="recipe-modal" class="modal-overlay hidden">
-        <div class="modal-content">
-            <button class="btn-close" onclick="closeModal()">×</button>
-            <h2 id="modal-title" style="color: #1e293b; font-size: 1.8rem; margin-top: 0;">Plat</h2>
-            <div style="color: #059669; font-weight: 700; margin-bottom: 20px;">
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+            <button class="btn-close" id="btn-close" onclick="closeModal()"><span aria-hidden="true">×</span> Fermer</button>
+            <h2 id="modal-title" style="color: #1e293b; font-size: 1.8rem; margin: 0 100px 0 0;">Plat</h2>
+            <div style="color: var(--primary); font-weight: 700; margin: 10px 0 20px 0;">
                 Coût : <span id="modal-price-pp">0.00</span> € / pers.
             </div>
-            
-            <div id="modal-loader" class="hidden">Chargement de la recette...</div>
-            
+
+            <div id="modal-loader" class="hidden" role="status">Chargement de la recette...</div>
+            <div id="modal-error" class="msg-error hidden" role="alert"></div>
+
             <h3 style="color: #475569; font-size: 1.1rem;">Ingrédients</h3>
             <ul id="modal-ingredients" style="color: #334155; line-height: 1.6;"></ul>
-            
+
             <h3 style="color: #475569; font-size: 1.1rem; margin-top: 20px;">Préparation</h3>
             <ol id="modal-instructions" style="color: #334155; line-height: 1.6;"></ol>
         </div>
@@ -180,11 +218,18 @@
 
     <script>
         let currentMenusData = {};
+        let boutonOrigine = null; // bouton « Voir la recette » qui a ouvert la fenêtre (pour lui rendre le focus)
+
+        // Petite fonction utile : après un changement d'écran, on place le focus sur le titre du nouvel écran
+        function donnerLeFocus(id) {
+            const element = document.getElementById(id);
+            if (element) element.focus();
+        }
 
         // -----------------------------------------
         // GESTION DE LA SÉCURITÉ (Le Frontend)
         // -----------------------------------------
-        
+
         // Au chargement de la page, on vérifie si l'utilisateur a déjà son "badge" (Jeton JWT)
         window.onload = function() {
             const token = localStorage.getItem("ecofrigo_token");
@@ -200,7 +245,8 @@
             const email = document.getElementById("email").value;
             const password = document.getElementById("password").value;
             const errorDiv = document.getElementById("auth-error");
-            
+
+            errorDiv.className = "msg-ok";
             errorDiv.innerText = "Chargement...";
 
             try {
@@ -216,17 +262,20 @@
                     if (action === "login") {
                         // Si connexion réussie, on sauvegarde le jeton JWT dans le navigateur !
                         localStorage.setItem("ecofrigo_token", data.token);
+                        errorDiv.innerText = "";
                         document.getElementById("auth-panel").classList.add("hidden");
                         document.getElementById("step-config").classList.remove("hidden");
+                        donnerLeFocus("titre-appli");
                     } else {
+                        errorDiv.className = "msg-ok";
                         errorDiv.innerText = "Compte créé ! Vous pouvez vous connecter.";
-                        errorDiv.style.color = "var(--primary)";
                     }
                 } else {
+                    errorDiv.className = "msg-error";
                     errorDiv.innerText = data.details;
-                    errorDiv.style.color = "var(--secondary)";
                 }
             } catch (err) {
+                errorDiv.className = "msg-error";
                 errorDiv.innerText = "Erreur de connexion au serveur.";
             }
         }
@@ -237,16 +286,19 @@
             document.getElementById("step-config").classList.add("hidden");
             document.getElementById("step-menus").classList.add("hidden");
             document.getElementById("loader").classList.add("hidden");
+            document.getElementById("gen-error").classList.add("hidden");
             document.getElementById("recipe-modal").classList.add("hidden");
             document.getElementById("main-container").classList.remove("hidden");
             document.getElementById("auth-panel").classList.remove("hidden");
             document.getElementById("email").value = "";
             document.getElementById("password").value = "";
             document.getElementById("auth-error").innerText = "";
+            donnerLeFocus("titre-appli");
         }
 
         // Envoie une requête POST avec le jeton JWT.
-        // Si le jeton est refusé (expiré ou absent), on déconnecte l'utilisateur.
+        // Si le jeton est refusé (expiré ou absent), on déconnecte l'utilisateur
+        // et on affiche un message écrit sur l'écran de connexion.
         async function appelerApi(url, corps) {
             const token = localStorage.getItem("ecofrigo_token");
             const response = await fetch(url, {
@@ -255,8 +307,10 @@
                 body: JSON.stringify(corps)
             });
             if (response.status === 401 || response.status === 403) {
-                alert("Session expirée. Veuillez vous reconnecter.");
                 seDeconnecter();
+                const errorDiv = document.getElementById("auth-error");
+                errorDiv.className = "msg-error";
+                errorDiv.innerText = "Session expirée. Veuillez vous reconnecter.";
                 return null;
             }
             return response.json();
@@ -278,30 +332,55 @@
         async function loadStores() {
             const city = document.getElementById('city').value.trim();
             const select = document.getElementById('store-select');
-            if (!city) return alert("Saisissez une ville.");
-            
-            select.innerHTML = "<option>Recherche...</option>";
+            const status = document.getElementById('store-status');
+            if (!city) {
+                status.className = "msg-error";
+                status.innerText = "Saisissez une ville.";
+                return;
+            }
+
+            status.className = "msg-ok";
+            status.innerText = "Recherche en cours...";
             try {
                 const data = await appelerApi('/api/get-stores', { city });
                 if (!data) return; // session expirée : l'utilisateur a été déconnecté
-                select.innerHTML = "";
+                select.innerHTML = "<option value=''>-- Choisissez l'enseigne --</option>";
                 if (data.status === "success" && data.stores.length > 0) {
                     data.stores.forEach(s => {
                         const opt = document.createElement('option');
                         opt.value = JSON.stringify(s); opt.textContent = `${s.nom} (${s.adresse})`;
                         select.appendChild(opt);
                     });
+                    status.innerText = `${data.stores.length} magasin(s) trouvé(s) à ${city}.`;
                 } else {
-                    select.innerHTML = "<option value=''>Aucun magasin trouvé</option>";
+                    status.className = "msg-error";
+                    status.innerText = "Aucun magasin trouvé pour cette ville.";
                 }
-            } catch (err) { select.innerHTML = "<option value=''>Erreur réseau</option>"; }
+            } catch (err) {
+                status.className = "msg-error";
+                status.innerText = "Erreur réseau : la recherche a échoué.";
+            }
+        }
+
+        // Affiche le message d'échec avec le bouton « Réessayer »
+        function afficherEchec(message) {
+            document.getElementById('loader').classList.add('hidden');
+            document.getElementById('gen-error-text').innerText = message;
+            document.getElementById('gen-error').classList.remove('hidden');
+            donnerLeFocus('gen-error');
         }
 
         async function generateMenus() {
             const rawValue = document.getElementById('store-select').value;
-            if (!rawValue) return alert("Sélectionnez un magasin.");
+            const configError = document.getElementById('config-error');
+            configError.innerText = "";
+            if (!rawValue) {
+                configError.innerText = "Sélectionnez un magasin.";
+                return;
+            }
 
             document.getElementById('step-config').classList.add('hidden');
+            document.getElementById('gen-error').classList.add('hidden');
             document.getElementById('loader').classList.remove('hidden');
 
             try {
@@ -316,51 +395,88 @@
                 if (data.status === "success") {
                     currentMenusData = data.menus;
                     renderFridgeInterior();
+                    document.getElementById('loader').classList.add('hidden');
                     document.getElementById('main-container').classList.add('hidden');
                     document.getElementById('step-menus').classList.remove('hidden');
+                    donnerLeFocus('menu-title');
                 } else {
-                    alert("Erreur de génération."); location.reload();
+                    afficherEchec("La génération des menus a échoué. Rien n'est perdu : réessayez dans quelques instants.");
                 }
-            } catch (err) { alert("Erreur réseau."); location.reload(); }
+            } catch (err) {
+                afficherEchec("Impossible de joindre le serveur. Vérifiez votre connexion puis réessayez.");
+            }
+        }
+
+        // Construit les « étagères » avec des éléments créés un par un (textContent) :
+        // le texte venant de l'IA n'est jamais interprété comme du HTML.
+        function creer(balise, classe, texte) {
+            const element = document.createElement(balise);
+            if (classe) element.className = classe;
+            if (texte) element.textContent = texte;
+            return element;
         }
 
         function renderFridgeInterior() {
             const container = document.getElementById('fridge-shelves-container');
             container.innerHTML = "";
             const jours = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
-            
-            let shelfHTML = "";
+
             for (let i = 0; i < jours.length; i += 3) {
-                shelfHTML += `<div class="shelf">`;
+                const etagere = creer('div', 'shelf');
                 jours.slice(i, i + 3).forEach(day => {
-                    if(currentMenusData[day]) {
-                        shelfHTML += `<div class="day-box"><h3 class="day-title">${day}</h3>`;
-                        currentMenusData[day].forEach((opt, index) => {
-                            shelfHTML += `
-                            <div class="meal-option">
-                                <span class="meal-badge">Choix ${index + 1}</span>
-                                <div class="meal-name">${opt.nom}</div>
-                                <div class="meal-price">${Number(opt.prix_par_personne).toFixed(2)} €</div>
-                                <button class="btn-outline" onclick="openRecipe('${day}', ${index})">Voir la recette</button>
-                            </div>`;
-                        });
-                        shelfHTML += `</div>`;
-                    }
+                    if (!currentMenusData[day]) return;
+                    const boite = creer('div', 'day-box');
+                    boite.appendChild(creer('h2', 'day-title', day));
+
+                    currentMenusData[day].forEach((opt, index) => {
+                        const choix = creer('div', 'meal-option');
+                        choix.appendChild(creer('span', 'meal-badge', `Choix ${index + 1}`));
+                        choix.appendChild(creer('div', 'meal-name', opt.nom));
+                        choix.appendChild(creer('div', 'meal-price', `${Number(opt.prix_par_personne).toFixed(2)} € par personne (prix estimé)`));
+
+                        const bouton = creer('button', 'btn-outline', 'Voir la recette');
+                        // Nom accessible unique : le lecteur d'écran annonce aussi le nom du plat
+                        bouton.setAttribute('aria-label', `Voir la recette : ${opt.nom}`);
+                        bouton.addEventListener('click', () => openRecipe(day, index, bouton));
+                        choix.appendChild(bouton);
+
+                        boite.appendChild(choix);
+                    });
+                    etagere.appendChild(boite);
                 });
-                shelfHTML += `</div>`;
+                container.appendChild(etagere);
             }
-            container.innerHTML = shelfHTML;
         }
 
-        function closeModal() { document.getElementById('recipe-modal').classList.add('hidden'); }
+        // -----------------------------------------
+        // FENÊTRE DE RECETTE
+        // -----------------------------------------
 
-        async function openRecipe(day, index) {
+        function closeModal() {
+            document.getElementById('recipe-modal').classList.add('hidden');
+            // On rend le focus au bouton qui avait ouvert la fenêtre
+            if (boutonOrigine) boutonOrigine.focus();
+        }
+
+        // Clavier : Échap ferme la fenêtre ; Tab reste dans la fenêtre.
+        // (Le bouton « Fermer » est le seul élément cliquable de la fenêtre, donc Tab le garde.)
+        document.addEventListener('keydown', function(e) {
+            const modal = document.getElementById('recipe-modal');
+            if (modal.classList.contains('hidden')) return;
+            if (e.key === 'Escape') closeModal();
+            if (e.key === 'Tab') { e.preventDefault(); document.getElementById('btn-close').focus(); }
+        });
+
+        async function openRecipe(day, index, bouton) {
             const meal = currentMenusData[day][index];
+            boutonOrigine = bouton;
             document.getElementById('modal-title').innerText = meal.nom;
             document.getElementById('recipe-modal').classList.remove('hidden');
-            
+            document.getElementById('btn-close').focus();
+
             document.getElementById('modal-ingredients').innerHTML = "";
             document.getElementById('modal-instructions').innerHTML = "";
+            document.getElementById('modal-error').classList.add('hidden');
             document.getElementById('modal-loader').classList.remove('hidden');
 
             try {
@@ -371,18 +487,29 @@
                     children: document.getElementById('children').value
                 });
                 if (!data) return; // session expirée : l'utilisateur a été déconnecté
+                document.getElementById('modal-loader').classList.add('hidden');
                 if (data.status === "success") {
-                    document.getElementById('modal-loader').classList.add('hidden');
                     document.getElementById('modal-price-pp').innerText = Number(data.recipe.prix_par_personne).toFixed(2);
-                    
+
                     data.recipe.ingredients.forEach(i => {
                         const li = document.createElement('li'); li.innerText = i; document.getElementById('modal-ingredients').appendChild(li);
                     });
                     data.recipe.etapes.forEach(e => {
                         const li = document.createElement('li'); li.innerText = e; document.getElementById('modal-instructions').appendChild(li);
                     });
-                } else { closeModal(); alert("Erreur."); }
-            } catch (err) { closeModal(); alert("Erreur réseau."); }
+                } else {
+                    afficherErreurRecette("La recette n'a pas pu être chargée. Fermez la fenêtre et réessayez.");
+                }
+            } catch (err) {
+                afficherErreurRecette("Erreur réseau : la recette n'a pas pu être chargée.");
+            }
+        }
+
+        function afficherErreurRecette(message) {
+            document.getElementById('modal-loader').classList.add('hidden');
+            const erreur = document.getElementById('modal-error');
+            erreur.innerText = message;
+            erreur.classList.remove('hidden');
         }
     </script>
 </body>
