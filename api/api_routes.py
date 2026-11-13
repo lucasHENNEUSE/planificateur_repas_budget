@@ -138,50 +138,15 @@ def generate_menus(data: MenuRequest, current_user: dict = Depends(verify_token)
     if count_products(store_name) < 50:
         charger_catalogue(store_name, "")
 
-    # 3. Gestion du Cache (pour éviter de payer l'IA si on a déjà la réponse)
-    cache_key = f"menu_{store_name.lower().replace(' ', '_')}_b{budget}_p{total_people}"
-    cached = menus_collection.find_one({"type": "menu_cache", "key": cache_key})
-    
-    if cached and cached.get("menus") and len(cached["menus"]) > 0:
-        menus_data = cached["menus"]
-        enregistrer_alerte_securite(email_utilisateur, "Menu récupéré depuis le cache (Pas d'appel IA).")
-    else:
-        # === DEBUT MONITORAGE MLOps (C11) ===
-        # L'IA va être sollicitée. On lance le chronomètre.
-        debut_chrono = time.time()
-        
-        try:
-            # Appel au moteur d'intelligence artificielle (RAG)
-            menus_data = generer_menu_rag(store_name, budget, total_people)
-            
-            # Arrêt du chronomètre
-            temps_ecoule = time.time() - debut_chrono
-            
-            if menus_data:
-                # Succès : On envoie les statistiques à MLflow
-                monitorer_ia_mlflow(store_name, float(budget), temps_ecoule, succes=True)
-                # On sauvegarde dans le cache pour les prochains utilisateurs
-                menus_collection.update_one(
-                    {"type": "menu_cache", "key": cache_key}, 
-                    {"$set": {"menus": menus_data}}, 
-                    upsert=True
-                )
-            else:
-                # Échec silencieux de l'IA (retour vide)
-                monitorer_ia_mlflow(store_name, float(budget), temps_ecoule, succes=False)
-                
-        except Exception as erreur:
-            # Échec critique de l'IA (ex: Gemini est en panne ou clé invalide)
-            temps_ecoule = time.time() - debut_chrono
-            
-            # On prévient MLflow de l'échec pour dégrader le taux de réussite du modèle (C11)
-            monitorer_ia_mlflow(store_name, float(budget), temps_ecoule, succes=False)
-            
-            # On prévient le fichier de logs (C20) qu'un incident grave s'est produit
-            enregistrer_alerte_securite(email_utilisateur, f"Crash IA Gemini : {str(erreur)}")
-            
-            return {"status": "error", "message": f"Erreur lors de la génération IA : {str(erreur)}"}
-        
+    # 3. Génération du menu (le cache est géré par generer_menu_rag) avec monitoring MLOps (C11)
+    debut_chrono = time.time()
+    try:
+        menus_data = generer_menu_rag(store_name, budget, total_people)
+        monitorer_ia_mlflow(store_name, float(budget), time.time() - debut_chrono, succes=True)
+    except Exception as erreur:
+        monitorer_ia_mlflow(store_name, float(budget), time.time() - debut_chrono, succes=False)
+        enregistrer_alerte_securite(email_utilisateur, f"Échec de la génération : {erreur}")
+        return {"status": "error", "message": f"Erreur lors de la génération : {erreur}"}
 
     return {"status": "success", "menus": menus_data}
 
@@ -195,13 +160,16 @@ def get_recipe(data: RecipeRequest, current_user: dict = Depends(verify_token)):
     total_people = data.adults + data.children
     prix_unitaire = data.prix_par_personne
     
-    cache_key = f"recipe_{meal_name.lower().strip()}_p{total_people}"
+    cache_key = f"recipe_v2_{meal_name.lower().strip()}_p{total_people}"
     cached = menus_collection.find_one({"type": "recipe_cache", "key": cache_key})
     
     if cached:
         recipe_data = cached["recipe"]
     else:
         recipe_data = rediger_recette_depuis_llm(meal_name, total_people)
+        if not recipe_data:
+            # L'IA a échoué : on n'invente pas de recette et on ne met rien en cache
+            return {"status": "error", "message": "Recette indisponible (IA injoignable ou quota atteint)."}
         menus_collection.update_one({"type": "recipe_cache", "key": cache_key}, {"$set": {"recipe": recipe_data}}, upsert=True)
 
     recipe_data["prix_par_personne"] = round(prix_unitaire, 2)
