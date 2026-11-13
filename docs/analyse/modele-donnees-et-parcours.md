@@ -23,7 +23,7 @@ La collection `menus_sauvegardes` mélange trois sortes de documents, distingué
 
 ## 2. Modèle conceptuel des données (MCD, méthode Merise)
 
-![MCD d'Éco-Frigo : 7 entités reliées par 5 associations](schemas/mcd.png)
+[Voir le MCD d'Éco-Frigo (méthode Merise, PDF)](schemas/mcd-parcours-merise.pdf)
 
 **Description du schéma (texte alternatif) :** le schéma comporte sept entités (rectangles) et cinq associations (ovales). Une ville regroupe un ou plusieurs magasins. Un magasin vend zéro ou plusieurs produits, chaque produit appartenant à un seul magasin. Un magasin sert de base à zéro ou plusieurs menus, chaque menu étant calculé pour un seul magasin. Un menu est composé de plats (14 : 7 jours, 2 choix par jour). Un plat peut avoir zéro ou une recette, et une recette peut servir plusieurs plats portant le même nom. L'entité UTILISATEUR n'est reliée à aucune autre.
 
@@ -69,7 +69,7 @@ Ces évolutions deviennent des cartes du backlog (sprint 3).
 
 ## 5. Parcours utilisateur (schéma fonctionnel)
 
-![Parcours principal d'un utilisateur, de la connexion à la recette](schemas/parcours.png)
+[Voir le parcours utilisateur (PDF, page du parcours)](schemas/mcd-parcours-merise.pdf)
 
 **Description du schéma (texte alternatif) :** l'utilisateur ouvre l'application. S'il n'a pas de compte, il en crée un (US1), puis il se connecte (US2). Si ses identifiants sont faux, un message d'erreur en texte s'affiche et il recommence. Une fois connecté, il cherche les magasins de sa ville (US3), choisit un magasin, indique son foyer et son budget (US4) et lance la génération des menus (US5, US6). Si la génération échoue, un message clair lui permet de réessayer. Sinon il consulte les menus de la semaine, peut ouvrir la recette d'un plat (US7) puis revenir aux menus, et enfin se déconnecter. À tout moment après la connexion, si le jeton est refusé, la session expire et il est renvoyé à l'écran de connexion.
 
