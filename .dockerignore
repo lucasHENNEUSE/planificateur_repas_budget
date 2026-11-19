@@ -1,0 +1,9 @@
+# Fichiers qui ne doivent jamais entrer dans l'image
+.env
+.git
+.venv
+__pycache__
+logs
+mlflow.db
+.coverage
+.pytest_cache
