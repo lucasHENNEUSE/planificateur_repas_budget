@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from data.catalogue_service import scrape_store_catalog as charger_catalogue
 from data.database import client, menus_collection, count_products
 from IA.rag_service import generer_menu_rag
-from IA.llm_service import obtenir_magasins_depuis_llm, rediger_recette_depuis_llm
+from IA.llm_service import obtenir_magasins_depuis_llm, rediger_recette_depuis_llm, CLOUD_AI_MODEL
 from api.auth_service import get_password_hash, verify_password, create_access_token, verify_token
 from monitoring import monitorer_ia_mlflow, enregistrer_alerte_securite
 
@@ -142,9 +142,11 @@ def generate_menus(data: MenuRequest, current_user: dict = Depends(verify_token)
     debut_chrono = time.time()
     try:
         menus_data = generer_menu_rag(store_name, budget, total_people)
-        monitorer_ia_mlflow(store_name, float(budget), time.time() - debut_chrono, succes=True)
+        monitorer_ia_mlflow(store_name, float(budget), time.time() - debut_chrono, succes=True,
+                            personnes=total_people, modele=CLOUD_AI_MODEL)
     except Exception as erreur:
-        monitorer_ia_mlflow(store_name, float(budget), time.time() - debut_chrono, succes=False)
+        monitorer_ia_mlflow(store_name, float(budget), time.time() - debut_chrono, succes=False,
+                            personnes=total_people, modele=CLOUD_AI_MODEL, erreur=str(erreur))
         enregistrer_alerte_securite(email_utilisateur, f"Échec de la génération : {erreur}")
         return {"status": "error", "message": f"Erreur lors de la génération : {erreur}"}
 
