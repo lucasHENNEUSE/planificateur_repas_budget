@@ -168,7 +168,10 @@ def get_recipe(data: RecipeRequest, current_user: dict = Depends(verify_token)):
     if cached:
         recipe_data = cached["recipe"]
     else:
-        recipe_data = rediger_recette_depuis_llm(meal_name, total_people)
+        try:
+            recipe_data = rediger_recette_depuis_llm(meal_name, total_people)
+        except RuntimeError as erreur:
+            return {"status": "error", "message": str(erreur)}   # message clair de Gemini
         if not recipe_data:
             # L'IA a échoué : on n'invente pas de recette et on ne met rien en cache
             return {"status": "error", "message": "Recette indisponible (IA injoignable ou quota atteint)."}
