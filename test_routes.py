@@ -197,6 +197,12 @@ def test_recette_erreur_claire_de_gemini(base, ia):
     assert "Limite d'utilisation" in reponse.json()["message"]
 
 
+def test_page_d_accueil_informe_que_c_est_une_ia():
+    # AI Act, article 50 : l'utilisateur est prévenu dès l'arrivée qu'il utilise une IA
+    reponse = client.get("/")
+    assert "intelligence artificielle" in reponse.text
+
+
 def test_modification_recette():
     # Route actuellement simplifiée : elle renvoie la recette marquée « Modifié »
     reponse = client.post("/api/modify-recipe", headers=entetes(), json={**DEMANDE_RECETTE, "feedback": "sans sel"})
