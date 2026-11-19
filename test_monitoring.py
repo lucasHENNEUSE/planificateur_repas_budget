@@ -14,11 +14,12 @@ def valeurs(appels):
 @patch("monitoring.mlflow")
 def test_generation_reussie_enregistre_parametres_et_metriques(mlflow):
     # Une génération réussie : on garde ce qui a été demandé, le modèle, le temps et le statut 1
-    monitorer_ia_mlflow("E.Leclerc", 20.0, 3.5, succes=True, personnes=2, modele="gemini-test")
+    monitorer_ia_mlflow("E.Leclerc", 20.0, 3.5, succes=True, personnes=2, modele="gemini-test", essais=2)
     assert valeurs(mlflow.log_param.call_args_list) == {
         "magasin": "E.Leclerc", "budget": 20.0, "personnes": 2, "modele": "gemini-test"}
     assert valeurs(mlflow.log_metric.call_args_list) == {
-        "temps_reponse_secondes": 3.5, "statut_reussite": 1}
+        "temps_reponse_secondes": 3.5, "statut_reussite": 1, "nombre_essais": 2}
+    mlflow.start_run.assert_called_once_with(run_name="E.Leclerc - 20.0 € - 2 pers.")   # titre lisible
     mlflow.set_tag.assert_not_called()            # pas d'erreur à noter
 
 

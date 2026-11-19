@@ -117,21 +117,24 @@ def verifier_menu(menu_ia, catalogue, budget_max):
 
 
 def generer_menu_rag(store_name, budget, total_people):
-    """Retourne le menu de la semaine {jour: [plat 1, plat 2]}. Lève une erreur si l'IA échoue."""
+    """
+    Retourne (menu de la semaine, nombre d'essais) : 1 = menu juste du premier coup,
+    2 = l'IA a dû corriger, 0 = menu repris du cache. Lève une erreur si l'IA échoue.
+    """
     budget_max = float(budget)
     cle = f"menu_v2_{store_name.lower().replace(' ', '_')}_b{budget}_p{total_people}"
 
     # Cache : si ce menu existe déjà, on n'appelle pas l'IA (économie de quota)
     en_cache = menus_collection.find_one({"type": "menu_cache", "key": cle})
     if en_cache:
-        return en_cache["menus"]
+        return en_cache["menus"], 0
 
     plats, accompagnements = recuperer_produits(store_name, budget_max)
     catalogue = {p["nom"].strip().lower(): p for p in plats + accompagnements}
 
     # 2 essais au maximum : si le contrôle trouve des erreurs, on les renvoie à l'IA
     remarques = ""
-    for _ in range(2):
+    for essai in (1, 2):
         reponse = appeler_gemini_json(construire_prompt(plats, accompagnements, budget_max, total_people, remarques))
         if not reponse:
             raise RuntimeError("Gemini n'a pas répondu (clé invalide, quota atteint ou service indisponible : voir le terminal).")
@@ -143,7 +146,7 @@ def generer_menu_rag(store_name, budget, total_people):
                 {"$set": {"menus": menu, "enseigne": store_name}},
                 upsert=True
             )
-            return menu
+            return menu, essai
         remarques = "Ta réponse précédente contenait des erreurs, corrige-les :\n- " + "\n- ".join(problemes)
 
     raise ValueError("Menu refusé après correction : " + " ; ".join(problemes[:3]))

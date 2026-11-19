@@ -29,14 +29,15 @@ mlflow.set_tracking_uri("sqlite:///mlflow.db")
 mlflow.set_experiment("Eco-Frigo-RAG")
 
 def monitorer_ia_mlflow(store_name: str, budget: float, temps_execution: float, succes: bool,
-                        personnes: int, modele: str, erreur: str = ""):
+                        personnes: int, modele: str, erreur: str = "", essais: int = 0):
     """
     Enregistre une génération de menu dans MLflow : une ligne par demande.
     - paramètres : ce qui a été demandé (magasin, budget, personnes) et le modèle utilisé
-    - métriques  : ce qui a été mesuré (temps de réponse, réussite 1 ou 0)
+    - métriques  : ce qui a été mesuré (temps de réponse, réussite 1 ou 0, nombre d'essais du RAG)
     - étiquette  : la raison de l'échec, pour retrouver vite les problèmes
     """
-    with mlflow.start_run():
+    # Le titre de la ligne dans MLflow : magasin, budget et nombre de personnes
+    with mlflow.start_run(run_name=f"{store_name} - {budget} € - {personnes} pers."):
         mlflow.log_param("magasin", store_name)
         mlflow.log_param("budget", budget)
         mlflow.log_param("personnes", personnes)
@@ -44,6 +45,9 @@ def monitorer_ia_mlflow(store_name: str, budget: float, temps_execution: float, 
 
         mlflow.log_metric("temps_reponse_secondes", temps_execution)
         mlflow.log_metric("statut_reussite", 1 if succes else 0)
+
+        if succes:
+            mlflow.log_metric("nombre_essais", essais)
 
         if erreur:
             mlflow.set_tag("erreur", erreur)

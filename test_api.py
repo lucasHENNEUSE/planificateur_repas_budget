@@ -67,9 +67,9 @@ def test_generation_menu_avec_mock(mock_rag, mock_mlflow, mock_count):
     """
     Test 4 (C12) : Simule le moteur de menus pour tester la route sans dépendance externe.
     """
-    mock_rag.return_value = {
+    mock_rag.return_value = ({
         "Lundi": [{"nom": "Plat de test simulé", "prix_par_personne": 2.5}]
-    }
+    }, 1)
     
     faux_token = create_access_token({"sub": "test@ecofrigo.fr"})
     reponse = client.post(
