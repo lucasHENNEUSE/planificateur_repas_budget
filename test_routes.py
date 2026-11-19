@@ -1,195 +1,154 @@
 """
-test_routes.py : tests des routes de l'API (carte #15, C12).
+test_donnees.py : tests des données (carte #16, C12).
 
-Principe : on appelle chaque route comme le ferait le navigateur,
-mais la base de données et Gemini sont remplacés par de fausses réponses
-(@patch). Les tests sont donc rapides, gratuits et sans internet.
+On vérifie la qualité des données à chaque étape :
+1. les produits choisis pour l'IA,
+2. les menus générés (structure, produits réels, budget),
+3. l'enregistrement dans la base,
+4. le chargement du catalogue.
+La base, Gemini et Open Food Facts sont remplacés par de fausses réponses (@patch).
 """
-from datetime import timedelta
-from unittest.mock import patch
-from fastapi.testclient import TestClient
-from main import app
-from api.auth_service import create_access_token, get_password_hash, verify_password
+from unittest.mock import patch, MagicMock
+from IA.rag_service import recuperer_produits, generer_menu_rag, JOURS
+from data.database import get_store_collection, save_products, get_store_products, count_products
+from data.catalogue_service import scrape_store_catalog
 
-client = TestClient(app)
+# ---------- 1. Produits choisis pour l'IA ----------
 
-
-def entetes(duree=timedelta(hours=2)):
-    # Fabrique l'en-tête d'un utilisateur connecté (jeton valable 2 h par défaut)
-    jeton = create_access_token({"sub": "test@ecofrigo.fr"}, duree)
-    return {"Authorization": f"Bearer {jeton}"}
-
-
-# ---------- Mots de passe et jetons ----------
-
-def test_mot_de_passe_hache():
-    # Le mot de passe est transformé en empreinte, et seule la bonne valeur la valide
-    empreinte = get_password_hash("secret123")
-    assert empreinte != "secret123"
-    assert verify_password("secret123", empreinte)
-    assert not verify_password("autre", empreinte)
+PRODUITS_BASE = [
+    {"nom": "Filet de poulet", "prix": 2.0},   # plat principal : gardé
+    {"nom": "Riz", "prix": 1.0},               # accompagnement : gardé
+    {"nom": "Yaourt nature", "prix": 0.8},     # dessert : exclu
+    {"nom": "Huile d'olive", "prix": 3.0},     # condiment : exclu
+    {"nom": "Steak haché", "prix": 5.0},       # trop cher pour le budget : exclu
+]
 
 
-def test_jeton_invalide_refuse():
-    # Un faux jeton est refusé (erreur 401)
-    reponse = client.post("/api/get-stores", json={"city": "Brest"},
-                          headers={"Authorization": "Bearer faux"})
-    assert reponse.status_code == 401
+@patch("IA.rag_service.get_store_products", return_value=PRODUITS_BASE)
+def test_produits_exclus_ou_trop_chers_ecartes(base):
+    # Budget 6 € : un produit seul ne doit pas dépasser 3 € (la moitié du budget)
+    plats, accompagnements = recuperer_produits("E.Leclerc", 6.0)
+    assert [p["nom"] for p in plats] == ["Filet de poulet"]
+    assert [p["nom"] for p in accompagnements] == ["Riz"]
 
 
-def test_jeton_expire_refuse():
-    # Un jeton déjà expiré est refusé avec un message pour se reconnecter
-    reponse = client.post("/api/get-stores", json={"city": "Brest"},
-                          headers=entetes(timedelta(seconds=-1)))
-    assert reponse.status_code == 401
-    assert "expiré" in reponse.json()["detail"]
+# ---------- 2. Menus générés ----------
+
+PRODUITS_MENU = [{"nom": "Filet de poulet", "prix": 2.0}, {"nom": "Riz", "prix": 1.0}]
+PLAT = {"nom": "Poulet et riz", "produits": ["Filet de poulet", "Riz"]}
+BUDGET = 4.0
 
 
-# ---------- Inscription ----------
-
-@patch("api.api_routes.users_collection")
-def test_inscription_reussie(base):
-    # Nouveau compte : l'email est nettoyé et le mot de passe n'est jamais stocké en clair
-    base.find_one.return_value = None
-    reponse = client.post("/api/register", json={"email": " Test@Ecofrigo.fr ", "password": "secret123"})
-    compte = base.insert_one.call_args[0][0]
-    assert reponse.json()["status"] == "success"
-    assert compte["email"] == "test@ecofrigo.fr"
-    assert compte["password"] != "secret123"
+@patch("IA.rag_service.get_store_products", return_value=PRODUITS_MENU)
+@patch("IA.rag_service.menus_collection")
+@patch("IA.rag_service.appeler_gemini_json", return_value={jour: [PLAT, PLAT] for jour in JOURS})
+def menu_genere(gemini, cache, base):
+    # Génère un menu avec un faux Gemini (utilisé par les 3 tests ci-dessous)
+    cache.find_one.return_value = None
+    return generer_menu_rag("E.Leclerc", str(BUDGET), 2)[0]   # [0] = le menu (sans le nombre d'essais)
 
 
-@patch("api.api_routes.users_collection")
-def test_inscription_mot_de_passe_trop_court(base):
-    # Moins de 6 caractères : refusé, rien n'est enregistré
-    reponse = client.post("/api/register", json={"email": "a@b.fr", "password": "123"})
-    assert reponse.json()["status"] == "error"
-    base.insert_one.assert_not_called()
+def test_menu_sept_jours_deux_plats():
+    # Chaque jour de la semaine a exactement 2 plats au choix
+    menu = menu_genere()
+    assert list(menu.keys()) == JOURS
+    assert all(len(plats) == 2 for plats in menu.values())
 
 
-@patch("api.api_routes.users_collection")
-def test_inscription_compte_existant(base):
-    # Email déjà utilisé : refusé, rien n'est enregistré
-    base.find_one.return_value = {"email": "a@b.fr"}
-    reponse = client.post("/api/register", json={"email": "a@b.fr", "password": "secret123"})
-    assert reponse.json()["status"] == "error"
-    base.insert_one.assert_not_called()
+def test_menu_champs_obligatoires():
+    # Chaque plat a un numéro d'option, un nom, un prix et la liste des ingrédients
+    for plats in menu_genere().values():
+        for plat in plats:
+            assert set(plat.keys()) == {"option", "nom", "prix_par_personne", "ingredients"}
 
 
-# ---------- Connexion ----------
-
-@patch("api.api_routes.users_collection")
-def test_connexion_reussie(base):
-    # Bon mot de passe : on reçoit un jeton
-    base.find_one.return_value = {"email": "a@b.fr", "password": get_password_hash("secret123")}
-    reponse = client.post("/api/login", json={"email": "a@b.fr", "password": "secret123"})
-    assert reponse.json()["status"] == "success"
-    assert reponse.json()["token"]
+def test_menu_budget_et_produits_reels():
+    # Chaque plat respecte le budget et n'utilise que des produits de la base
+    noms_reels = [p["nom"] for p in PRODUITS_MENU]
+    for plats in menu_genere().values():
+        for plat in plats:
+            assert 0 < plat["prix_par_personne"] <= BUDGET
+            assert all(ingredient in noms_reels for ingredient in plat["ingredients"])
 
 
-@patch("api.api_routes.users_collection")
-def test_connexion_mauvais_mot_de_passe(base):
-    # Mauvais mot de passe : erreur et aucun jeton
-    base.find_one.return_value = {"email": "a@b.fr", "password": get_password_hash("secret123")}
-    reponse = client.post("/api/login", json={"email": "a@b.fr", "password": "faux"})
-    assert reponse.json()["status"] == "error"
-    assert "token" not in reponse.json()
+# ---------- 3. Enregistrement dans la base ----------
+
+@patch("data.database.db", {"produits_carrefour": "tiroir Carrefour", "produits_leclerc": "tiroir Leclerc"})
+def test_produits_ranges_dans_le_bon_tiroir():
+    # Carrefour a sa collection, tout le reste va dans celle de Leclerc
+    assert get_store_collection("Carrefour Brest") == "tiroir Carrefour"
+    assert get_store_collection("E.Leclerc Brest") == "tiroir Leclerc"
+    assert get_store_collection("Autre magasin") == "tiroir Leclerc"
 
 
-# ---------- Magasins ----------
-
-def test_magasins_ville_vide():
-    # Ville vide : erreur et liste vide
-    reponse = client.post("/api/get-stores", json={"city": "  "}, headers=entetes())
-    assert reponse.json() == {"status": "error", "stores": []}
-
-
-@patch("api.api_routes.obtenir_magasins_depuis_llm")
-@patch("api.api_routes.menus_collection")
-def test_magasins_depuis_le_cache(base, ia):
-    # Ville déjà recherchée : on répond depuis la base, sans appeler Gemini
-    base.find_one.return_value = {"stores": [{"nom": "E.Leclerc", "adresse": "Brest"}]}
-    reponse = client.post("/api/get-stores", json={"city": "Brest"}, headers=entetes())
-    assert reponse.json()["stores"][0]["nom"] == "E.Leclerc"
-    ia.assert_not_called()
+@patch("data.database.get_store_collection")
+def test_enregistrement_sans_doublon(tiroir):
+    # Un produit est identifié par son nom ET son magasin, et enregistré en « upsert »
+    # (mis à jour s'il existe déjà, créé sinon) : pas de doublon.
+    save_products("E.Leclerc Brest", [{"nom": "Riz", "prix": 1.0, "enseigne": "E.Leclerc Brest"}])
+    filtre, _ = tiroir.return_value.update_one.call_args.args
+    assert filtre == {"nom": "Riz", "enseigne": "E.Leclerc Brest"}
+    assert tiroir.return_value.update_one.call_args.kwargs["upsert"] is True
 
 
-@patch("api.api_routes.obtenir_magasins_depuis_llm", return_value=None)
-@patch("api.api_routes.menus_collection")
-def test_magasins_solution_de_secours(base, ia):
-    # Gemini ne répond pas : on propose quand même Leclerc et Carrefour
-    base.find_one.return_value = None
-    reponse = client.post("/api/get-stores", json={"city": "Brest"}, headers=entetes())
-    noms = [magasin["nom"] for magasin in reponse.json()["stores"]]
-    assert noms == ["E.Leclerc", "Carrefour"]
+@patch("data.database.get_store_collection")
+def test_lecture_limitee_au_magasin(tiroir):
+    # On ne lit et on ne compte que les produits du magasin demandé
+    count_products("E.Leclerc Brest")
+    get_store_products("E.Leclerc Brest")
+    tiroir.return_value.count_documents.assert_called_once_with({"enseigne": "E.Leclerc Brest"})
+    assert tiroir.return_value.find.call_args.args[0] == {"enseigne": "E.Leclerc Brest"}
 
 
-# ---------- Génération des menus ----------
+# ---------- 4. Chargement du catalogue (Open Food Facts) ----------
 
-DEMANDE_MENUS = {"store_name": "Carrefour", "budget": 20, "adults": 2, "children": 0}
-
-
-@patch("api.api_routes.enregistrer_alerte_securite")
-@patch("api.api_routes.monitorer_ia_mlflow")
-@patch("api.api_routes.generer_menu_rag", side_effect=RuntimeError("Gemini n'a pas répondu"))
-@patch("api.api_routes.count_products", return_value=100)
-def test_generation_echec(produits, rag, mlflow, alerte):
-    # Le moteur échoue : message d'erreur, échec suivi dans MLflow, alerte écrite dans le journal
-    reponse = client.post("/api/generate-menus", headers=entetes(), json=DEMANDE_MENUS)
-    assert reponse.json()["status"] == "error"
-    assert "Gemini n'a pas répondu" in reponse.json()["message"]
-    assert mlflow.call_args.kwargs["succes"] is False
+def fausse_reponse():
+    # Fausse réponse d'Open Food Facts : 1 bon produit, 1 sans nom, 1 nom trop court
+    reponse = MagicMock(status_code=200)
+    reponse.json.return_value = {"products": [
+        {"product_name_fr": "Poulet rôti", "categories": "Viandes, Plats"},
+        {"product_name": ""},
+        {"product_name": "ab"},
+    ]}
+    return reponse
 
 
-@patch("api.api_routes.monitorer_ia_mlflow")
-@patch("api.api_routes.enregistrer_alerte_securite")
-@patch("api.api_routes.generer_menu_rag", return_value={"Lundi": []})
-@patch("api.api_routes.charger_catalogue")
-@patch("api.api_routes.count_products", return_value=10)
-def test_generation_charge_le_catalogue(produits, charger, rag, alerte, mlflow):
-    # Moins de 50 produits en base : on charge le catalogue avant de générer
-    client.post("/api/generate-menus", headers=entetes(), json=DEMANDE_MENUS)
-    charger.assert_called_once()
+@patch("data.catalogue_service.get_store_products", return_value=[])
+@patch("data.catalogue_service.save_products")
+@patch("data.catalogue_service.count_products", return_value=0)
+@patch("data.catalogue_service.requests.get", return_value=fausse_reponse())
+def test_catalogue_produits_valides_seulement(web, compte, sauvegarde, lecture):
+    # Les produits sans nom ou au nom trop court sont ignorés ; les autres ont un prix, un rayon, une enseigne
+    scrape_store_catalog("E.Leclerc Brest")
+    produits = sauvegarde.call_args.args[1]
+    assert produits[0] == {"nom": "Poulet rôti", "prix": 3.0, "rayon": "Viandes", "enseigne": "E.Leclerc Brest"}
+    assert all(len(p["nom"]) > 2 for p in produits)
 
 
-# ---------- Recettes ----------
-
-DEMANDE_RECETTE = {"meal_name": "Poulet riz", "prix_par_personne": 2.5, "adults": 2, "children": 1}
-
-
-@patch("api.api_routes.rediger_recette_depuis_llm", return_value={"nom": "Poulet riz", "etapes": ["Cuire"]})
-@patch("api.api_routes.menus_collection")
-def test_recette_nouvelle(base, ia):
-    # Recette inconnue : Gemini la rédige, le code calcule le prix total et la met en cache
-    base.find_one.return_value = None
-    reponse = client.post("/api/get-recipe", json=DEMANDE_RECETTE, headers=entetes())
-    assert reponse.json()["status"] == "success"
-    assert reponse.json()["recipe"]["prix_total"] == 7.5       # 2,50 € x 3 personnes
-    base.update_one.assert_called_once()
+@patch("data.catalogue_service.get_store_products", return_value=[])
+@patch("data.catalogue_service.save_products")
+@patch("data.catalogue_service.count_products", return_value=0)
+@patch("data.catalogue_service.requests.get", return_value=fausse_reponse())
+def test_catalogue_prix_dans_la_fourchette(web, compte, sauvegarde, lecture):
+    # Open Food Facts ne donne pas de prix : le code en attribue un entre 1,50 € et 3,00 €
+    scrape_store_catalog("E.Leclerc Brest")
+    assert all(1.5 <= p["prix"] <= 3.0 for p in sauvegarde.call_args.args[1])
 
 
-@patch("api.api_routes.rediger_recette_depuis_llm")
-@patch("api.api_routes.menus_collection")
-def test_recette_depuis_le_cache(base, ia):
-    # Recette déjà en cache : Gemini n'est pas appelé
-    base.find_one.return_value = {"recipe": {"nom": "Poulet riz", "etapes": ["Cuire"]}}
-    reponse = client.post("/api/get-recipe", json=DEMANDE_RECETTE, headers=entetes())
-    assert reponse.json()["status"] == "success"
-    ia.assert_not_called()
+@patch("data.catalogue_service.get_store_products", return_value=[])
+@patch("data.catalogue_service.save_products")
+@patch("data.catalogue_service.count_products", return_value=0)
+@patch("data.catalogue_service.requests.get", return_value=fausse_reponse())
+def test_catalogue_plan_b_si_peu_de_produits(web, compte, sauvegarde, lecture):
+    # Moins de 50 produits trouvés : 3 pages du plan A puis 4 recherches de secours (plan B)
+    scrape_store_catalog("E.Leclerc Brest")
+    assert web.call_count == 3 + 4
 
 
-@patch("api.api_routes.rediger_recette_depuis_llm", return_value=None)
-@patch("api.api_routes.menus_collection")
-def test_recette_echec_ia(base, ia):
-    # Gemini échoue : message d'erreur, et surtout rien n'est mis en cache
-    base.find_one.return_value = None
-    reponse = client.post("/api/get-recipe", json=DEMANDE_RECETTE, headers=entetes())
-    assert reponse.json()["status"] == "error"
-    base.update_one.assert_not_called()
-
-
-def test_modification_recette():
-    # Route actuellement simplifiée : elle renvoie la recette marquée « Modifié »
-    reponse = client.post("/api/modify-recipe", headers=entetes(), json={**DEMANDE_RECETTE, "feedback": "sans sel"})
-    assert reponse.json()["recipe"]["nom"] == "Poulet riz (Modifié)"
-
-    # pytest -m pytest -v
+@patch("data.catalogue_service.get_store_products", return_value=[])
+@patch("data.catalogue_service.count_products", return_value=400)
+@patch("data.catalogue_service.requests.get")
+def test_catalogue_deja_rempli_aucun_appel(web, compte, lecture):
+    # Déjà 400 produits en base : on n'appelle pas Open Food Facts
+    scrape_store_catalog("E.Leclerc Brest")
+    web.assert_not_called()

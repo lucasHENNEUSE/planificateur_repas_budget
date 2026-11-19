@@ -141,9 +141,9 @@ def generate_menus(data: MenuRequest, current_user: dict = Depends(verify_token)
     # 3. Génération du menu (le cache est géré par generer_menu_rag) avec monitoring MLOps (C11)
     debut_chrono = time.time()
     try:
-        menus_data = generer_menu_rag(store_name, budget, total_people)
+        menus_data, essais = generer_menu_rag(store_name, budget, total_people)
         monitorer_ia_mlflow(store_name, float(budget), time.time() - debut_chrono, succes=True,
-                            personnes=total_people, modele=CLOUD_AI_MODEL)
+                            personnes=total_people, modele=CLOUD_AI_MODEL, essais=essais)
     except Exception as erreur:
         monitorer_ia_mlflow(store_name, float(budget), time.time() - debut_chrono, succes=False,
                             personnes=total_people, modele=CLOUD_AI_MODEL, erreur=str(erreur))

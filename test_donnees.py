@@ -45,7 +45,7 @@ BUDGET = 4.0
 def menu_genere(gemini, cache, base):
     # Génère un menu avec un faux Gemini (utilisé par les 3 tests ci-dessous)
     cache.find_one.return_value = None
-    return generer_menu_rag("E.Leclerc", str(BUDGET), 2)
+    return generer_menu_rag("E.Leclerc", str(BUDGET), 2)[0]   # [0] = le menu (sans le nombre d'essais)
 
 
 def test_menu_sept_jours_deux_plats():

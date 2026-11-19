@@ -42,9 +42,10 @@ def test_generation_reussie(mock_gemini, mock_coll, mock_produits):
     mock_coll.find_one.return_value = None  # pas de cache
     mock_gemini.return_value = reponse_ia(["Filet de poulet", "Riz"])
 
-    menu = generer_menu_rag("E.Leclerc", "4.0", 3)
+    menu, essais = generer_menu_rag("E.Leclerc", "4.0", 3)
 
     assert len(menu) == 7
+    assert essais == 1                         # juste du premier coup
     mock_coll.update_one.assert_called_once()  # le menu est enregistré en cache
 
 
@@ -55,8 +56,9 @@ def test_correction_demandee_a_l_ia(mock_gemini, mock_coll, mock_produits):
     mock_coll.find_one.return_value = None
     mock_gemini.side_effect = [reponse_ia(["Filet de poulet", "Caviar"]), reponse_ia(["Filet de poulet", "Riz"])]
 
-    generer_menu_rag("E.Leclerc", "4.0", 3)
+    _, essais = generer_menu_rag("E.Leclerc", "4.0", 3)
 
+    assert essais == 2                         # une correction a été nécessaire
     assert mock_gemini.call_count == 2
     assert "Caviar" in mock_gemini.call_args_list[1].args[0]  # l'erreur est renvoyée à l'IA
 
@@ -77,3 +79,13 @@ def test_echec_si_gemini_ne_repond_pas(mock_gemini, mock_coll, mock_produits):
     with pytest.raises(RuntimeError):
         generer_menu_rag("E.Leclerc", "4.0", 3)
     mock_coll.update_one.assert_not_called()  # rien n'est mis en cache
+
+
+@patch("IA.rag_service.menus_collection")
+@patch("IA.rag_service.appeler_gemini_json")
+def test_menu_repris_du_cache(mock_gemini, mock_coll):
+    # Menu déjà en cache : 0 essai et Gemini n'est pas appelé
+    mock_coll.find_one.return_value = {"menus": {"Lundi": []}}
+    menu, essais = generer_menu_rag("E.Leclerc", "4.0", 3)
+    assert essais == 0
+    mock_gemini.assert_not_called()
