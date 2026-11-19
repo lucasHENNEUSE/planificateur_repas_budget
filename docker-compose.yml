@@ -1,4 +1,3 @@
-version: '3.8'
 services:
   mongodb:
     image: mongo:7.0
@@ -9,6 +8,17 @@ services:
       - "27019:27019"
     volumes:
       - frigo_eco_data:/data/db
+
+  # L'application Éco-Frigo, construite avec le Dockerfile
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file: .env               # clés et secrets lus depuis .env (jamais dans l'image)
+    environment:
+      MONGO_URI: mongodb://mongodb:27019/   # dans Docker, MongoDB s'appelle "mongodb"
+    depends_on:
+      - mongodb
 
 volumes:
   frigo_eco_data:
