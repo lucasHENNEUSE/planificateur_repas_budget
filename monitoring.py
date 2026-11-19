@@ -28,18 +28,24 @@ def enregistrer_alerte_securite(cible: str, type_attaque: str):
 mlflow.set_tracking_uri("sqlite:///mlflow.db")
 mlflow.set_experiment("Eco-Frigo-RAG")
 
-def monitorer_ia_mlflow(store_name: str, budget: float, temps_execution: float, succes: bool):
+def monitorer_ia_mlflow(store_name: str, budget: float, temps_execution: float, succes: bool,
+                        personnes: int, modele: str, erreur: str = ""):
     """
-    Enregistre les performances de l'IA (Features et Métriques) dans MLflow.
+    Enregistre une génération de menu dans MLflow : une ligne par demande.
+    - paramètres : ce qui a été demandé (magasin, budget, personnes) et le modèle utilisé
+    - métriques  : ce qui a été mesuré (temps de réponse, réussite 1 ou 0)
+    - étiquette  : la raison de l'échec, pour retrouver vite les problèmes
     """
-    # start_run() crée une nouvelle ligne dans le tableau de bord MLflow
     with mlflow.start_run():
-        # Enregistrement des paramètres d'entrée (Features)
         mlflow.log_param("magasin", store_name)
         mlflow.log_param("budget", budget)
-        
-        # Enregistrement des métriques de performance
+        mlflow.log_param("personnes", personnes)
+        mlflow.log_param("modele", modele)
+
         mlflow.log_metric("temps_reponse_secondes", temps_execution)
         mlflow.log_metric("statut_reussite", 1 if succes else 0)
 
-        # mlflow ui --backend-store-uri sqlite:///mlflow.db
+        if erreur:
+            mlflow.set_tag("erreur", erreur)
+
+        # Pour voir le tableau de bord : mlflow ui --backend-store-uri sqlite:///mlflow.db
