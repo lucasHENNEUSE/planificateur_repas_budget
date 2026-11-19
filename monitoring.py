@@ -1,6 +1,7 @@
 """
 monitorage.py : Service hybride de sécurité API (C20) et Monitorage MLOps (C11).
 """
+import hashlib
 import logging
 import os
 import mlflow
@@ -17,8 +18,13 @@ logging.basicConfig(
 )
 
 def enregistrer_alerte_securite(cible: str, type_attaque: str):
-    """Journalise les tentatives de piratage ou les erreurs de mot de passe."""
-    message = f"ALERTE SÉCURITÉ | Cible : {cible} | Motif : {type_attaque}"
+    """
+    Journalise les alertes de sécurité et les échecs.
+    L'e-mail n'est jamais écrit en clair : on garde une empreinte de 8 caractères,
+    qui permet de reconnaître un même utilisateur sans l'identifier.
+    """
+    utilisateur = hashlib.sha256(cible.encode()).hexdigest()[:8]
+    message = f"ALERTE SÉCURITÉ | Utilisateur : {utilisateur} | Motif : {type_attaque}"
     logging.warning(message)
     print(f"attention {message}")
 
