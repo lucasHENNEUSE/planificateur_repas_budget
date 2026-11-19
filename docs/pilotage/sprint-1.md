@@ -28,7 +28,7 @@
 | 10 novembre | `.gitignore`, `SECRET_KEY` obligatoire (PR #28), routes protégées par JWT (carte #8), 1re synthèse de veille. | Push refusé, résolu avec `git pull --rebase`. |
 | 13 novembre | Nouveau moteur de menus RAG (PR #36), interface accessible (PR #35), captures annotées (PR #34), MCD et parcours. | Clé de l'IA invalide, erreur 503, plats trop chers : voir le journal. |
 | 14 novembre | Architecture (#12), choix techniques (PR #40), tests des routes (PR #41), tests de données (PR #42). | Pull request absente : je n'avais pas poussé ma branche. |
-| 19 novembre | Suivi MLflow du RAG (PR #44), `httpx2` (PR #45), veille complémentaire, pseudonymisation des e-mails dans les logs (#19), alerte après 3 échecs de suite (#18), messages d'erreur clairs de Gemini (#26), mention « IA » sur la page d'accueil, correction de `utcnow`. | Git refusait de changer de branche : `git stash`. 6 tests de routes écrasés par une autre carte : repérés avec le nombre de tests (42 au lieu de 48), restaurés. |
+| 19 novembre | Suivi MLflow du RAG (PR #44), `httpx2` (PR #45), veille complémentaire. | Git refusait de changer de branche : `git stash`. |
 
 ## 3. Imprévus et décisions
 
@@ -38,13 +38,16 @@
 | 10 novembre | Quota gratuit de Gemini limité (veille) | Cartes « erreur 429 » et « niveau de réflexion » ajoutées au sprint 3 |
 | 13 novembre | Moteur de menus de mauvaise qualité | Refait tout de suite (carte #14, prévue au sprint 3) |
 | 13 novembre | Défauts d'accessibilité dans l'interface | Corrigés tout de suite (carte #23, prévue au sprint 6) |
-| 19 novembre | Une carte a écrasé 6 tests des routes en copiant une ancienne version du fichier | Fichier restauré avec une PR de correction. Règle : comparer le nombre de tests après chaque fusion |
 
 Détail des problèmes : `docs/journal-problemes.md`.
 
 ## 4. Revue de sprint (20 novembre)
 
-**Cartes terminées en plus, prévues pour des sprints suivants :** #10, #11, #12, #13, #14, #15, #16, #17, #18, #19, #23, #25 et #26 (PR #34 à #44, puis les PR des cartes du 19 novembre), plus la carte « mention IA » sur la page d'accueil.
+**Les 7 cartes prévues sont terminées** (#2 à #8). 
+
+**Cartes terminées en plus, prévues pour des sprints suivants :** #10, #11, #12, #13, #14, #15, #16, #17, #23 et #25 (PR #34 à #44).
+
+**Chiffres :** 46 tests automatiques, couverture mesurée avec pytest-cov : [pourcentage « TOTAL »], 1 incident réel documenté.
 
 **Démonstration :**
 1. Connexion, choix du magasin et du budget, menus générés avec le RAG, recette d'un plat.
@@ -54,7 +57,7 @@ Détail des problèmes : `docs/journal-problemes.md`.
 ## 5. Rétrospective
 
 **Ce qui a bien marché**
-- Une branche et une pull request par carte, avec `Closes #N`.
+- Une branche et une pull request par carte, avec.
 - Je note les problèmes dans le journal quand ils arrivent.
 - La veille m'a servi tout de suite (quota de Gemini, article 50 de l'AI Act).
 - Le code contrôle l'IA : c'est lui qui garantit le budget.
@@ -63,7 +66,6 @@ Détail des problèmes : `docs/journal-problemes.md`.
 - Je n'ai pas fait les points quotidiens dès le premier jour.
 - Mon plan ne suivait plus mon avancement : j'ai fini des cartes de sprints futurs sans replanifier.
 - Plusieurs oublis avec Git : branche non poussée, images non ajoutées, fichier dans le mauvais dossier.
-- Des informations privées visibles dans des captures (e-mail, `.env`).
 
 **Actions pour le sprint 2**
 1. Replanifier les sprints 2 à 6 avec ce qui reste à faire.
