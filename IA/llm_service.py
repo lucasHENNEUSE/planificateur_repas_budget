@@ -9,18 +9,29 @@ from google.genai import types
 # Récupération de la clé API et initialisation du client Gemini
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 gemini_client = genai.Client(api_key=GOOGLE_API_KEY) if GOOGLE_API_KEY else None
-CLOUD_AI_MODEL = 'gemini-3.5-flash-lite'
+CLOUD_AI_MODEL = 'gemini-3.8-flash'
+
+def expliquer_erreur(erreur: str) -> str:
+    """Transforme l'erreur technique de Gemini en message clair pour l'utilisateur."""
+    if "429" in erreur:
+        return "Limite d'utilisation de Gemini atteinte, réessaie plus tard."
+    if "503" in erreur:
+        return "Gemini est surchargé, réessaie dans un instant."
+    if "API key" in erreur:
+        return "Clé API Gemini invalide, contacte l'administrateur."
+    return "Gemini a renvoyé une erreur."
 
 def appeler_gemini_json(prompt: str) -> Optional[dict]:
     """
     Envoie un prompt au modèle Gemini et force une réponse au format JSON.
     Si Gemini est surchargé (erreur 503), on réessaie jusqu'à 3 fois.
-    Retourne None si l'appel échoue.
+    Si l'appel échoue, lève une erreur avec un message clair (voir expliquer_erreur).
     """
     if not gemini_client:
         print("Erreur : Clé API Google non trouvée.")
         return None
 
+    erreur = ""
     for essai in range(3):
         try:
             response = gemini_client.models.generate_content(
@@ -31,10 +42,11 @@ def appeler_gemini_json(prompt: str) -> Optional[dict]:
             return json.loads(response.text)
         except Exception as e:
             print(f"Erreur lors de l'appel LLM Gemini : {str(e)}")
-            if "503" not in str(e):
-                return None   
+            erreur = str(e)
+            if "503" not in erreur:
+                break         # autre erreur (clé, quota...) : inutile de réessayer
             time.sleep(3)     # Gemini surchargé : on attend un peu avant de réessayer
-    return None
+    raise RuntimeError(expliquer_erreur(erreur))
 
 # --- FONCTIONS MÉTIERS (Prompts) ---
 

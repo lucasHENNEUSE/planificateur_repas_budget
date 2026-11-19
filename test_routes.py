@@ -187,6 +187,16 @@ def test_recette_echec_ia(base, ia):
     base.update_one.assert_not_called()
 
 
+@patch("api.api_routes.rediger_recette_depuis_llm", side_effect=RuntimeError("Limite d'utilisation de Gemini atteinte, réessaie plus tard."))
+@patch("api.api_routes.menus_collection")
+def test_recette_erreur_claire_de_gemini(base, ia):
+    # Quand Gemini lève une erreur, l'utilisateur reçoit son message clair
+    base.find_one.return_value = None
+    reponse = client.post("/api/get-recipe", json=DEMANDE_RECETTE, headers=entetes())
+    assert reponse.json()["status"] == "error"
+    assert "Limite d'utilisation" in reponse.json()["message"]
+
+
 def test_modification_recette():
     # Route actuellement simplifiée : elle renvoie la recette marquée « Modifié »
     reponse = client.post("/api/modify-recipe", headers=entetes(), json={**DEMANDE_RECETTE, "feedback": "sans sel"})
