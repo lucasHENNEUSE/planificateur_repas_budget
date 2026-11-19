@@ -32,8 +32,20 @@ def test_generation_en_echec_enregistre_statut_0_et_erreur(mlflow):
 
 
 @patch("monitoring.logging")
-def test_alerte_securite_ecrite_dans_le_journal(journal):
-    # Une alerte est écrite en niveau « warning » avec la cible et le motif
+def test_alerte_securite_sans_email_en_clair(journal):
+    # L'adresse e-mail n'apparaît jamais dans le journal, seulement le motif
     enregistrer_alerte_securite("a@b.fr", "Échec de la génération")
     message = journal.warning.call_args.args[0]
-    assert "a@b.fr" in message and "Échec de la génération" in message
+    assert "a@b.fr" not in message
+    assert "Échec de la génération" in message
+
+
+@patch("monitoring.logging")
+def test_meme_utilisateur_meme_empreinte(journal):
+    # Même e-mail : même empreinte (on peut suivre un utilisateur). E-mail différent : empreinte différente.
+    enregistrer_alerte_securite("a@b.fr", "test")
+    enregistrer_alerte_securite("a@b.fr", "test")
+    enregistrer_alerte_securite("c@d.fr", "test")
+    premier, deuxieme, autre = [appel.args[0] for appel in journal.warning.call_args_list]
+    assert premier == deuxieme
+    assert premier != autre
