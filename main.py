@@ -1,4 +1,6 @@
 import uvicorn
+from contextlib import asynccontextmanager
+from data.database import creer_index
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, Response
 from fastapi.templating import Jinja2Templates
@@ -7,12 +9,20 @@ from dotenv import load_dotenv
 # Chargement des variables d'environnement
 load_dotenv()
 
+# Au démarrage de l'application, on crée les index MongoDB
+@asynccontextmanager
+async def lifespan(app):
+    creer_index()
+    yield
+
 # Initialisation de l'application FastAPI (Référentiel C5 - API REST)
 app = FastAPI(
     title="Eco-Frigo API",
     description="API de planification de repas et de gestion intelligente du frigo",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
+
 
 templates = Jinja2Templates(directory="templates")
 

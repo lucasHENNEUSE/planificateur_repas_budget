@@ -10,7 +10,7 @@ La base, Gemini et Open Food Facts sont remplacés par de fausses réponses (@pa
 """
 from unittest.mock import patch, MagicMock
 from IA.rag_service import recuperer_produits, generer_menu_rag, JOURS
-from data.database import get_store_collection, save_products, get_store_products, count_products
+from data.database import get_store_collection, save_products, get_store_products, count_products, creer_index
 from data.catalogue_service import scrape_store_catalog
 
 # ---------- 1. Produits choisis pour l'IA ----------
@@ -98,6 +98,15 @@ def test_lecture_limitee_au_magasin(tiroir):
     get_store_products("E.Leclerc Brest")
     tiroir.return_value.count_documents.assert_called_once_with({"enseigne": "E.Leclerc Brest"})
     assert tiroir.return_value.find.call_args.args[0] == {"enseigne": "E.Leclerc Brest"}
+
+
+@patch("data.database.menus_collection")
+@patch("data.database.db")
+def test_creation_des_index(base, menus):
+    # L'e-mail des comptes est unique, et les caches ont leurs index de recherche
+    creer_index()
+    base["users"].create_index.assert_called_once_with("email", unique=True)
+    assert menus.create_index.call_count == 2
 
 
 # ---------- 4. Chargement du catalogue (Open Food Facts) ----------
