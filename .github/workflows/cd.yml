@@ -1,0 +1,52 @@
+name: Livraison continue - Evaluation et image Docker
+
+# Se lance seulement quand le CI (les tests) est terminé sur main
+on:
+  workflow_run:
+    workflows: ["Integration Continue - Tests Eco-Frigo"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+  packages: write      # autorise la publication de l'image dans GitHub Container Registry
+
+jobs:
+  livrer:
+    # On ne livre que si les tests ont réussi
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Récupérer le code source
+        uses: actions/checkout@v4
+
+      - name: Installer Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Installer les dépendances
+        run: pip install -r requirements.txt
+
+      - name: Évaluer le modèle Gemini
+        # La clé est stockée dans les secrets de GitHub, jamais dans le code
+        env:
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+        run: |
+          python evaluation.py
+          cat rapport_evaluation.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Se connecter au registre d'images de GitHub
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Construire et publier l'image Docker
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/lucashenneuse/planificateur_repas_budget:latest
