@@ -13,6 +13,15 @@ client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
 db = client["planificateur_repas_db"]
 menus_collection = db["menus_sauvegardes"]
 
+def creer_index():
+    """
+    Crée les index MongoDB au démarrage de l'application (sans effet s'ils existent déjà).
+    Un index accélère les recherches ; un index unique empêche aussi les doublons.
+    """
+    db["users"].create_index("email", unique=True)               # un seul compte par e-mail
+    menus_collection.create_index([("type", 1), ("key", 1)])     # caches des menus et des recettes
+    menus_collection.create_index([("type", 1), ("city", 1)])    # cache des magasins
+
 def get_store_collection(store_name: str):
     """
     Analyse le nom du magasin et range la donnée dans l'un des 2 "gros tiroirs".
