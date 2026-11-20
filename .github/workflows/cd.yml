@@ -1,11 +1,12 @@
 name: Livraison continue - Evaluation et image Docker
 
-# Se lance seulement quand le CI (les tests) est terminé sur main
+# Se lance après le CI (tests) sur main, ou à la main depuis l'onglet Actions
 on:
   workflow_run:
     workflows: ["Integration Continue - Tests Eco-Frigo"]
     types: [completed]
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -13,9 +14,10 @@ permissions:
 
 jobs:
   livrer:
-    # On ne livre que si les tests ont réussi
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    # On livre si lancé à la main, ou si les tests ont réussi
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - name: Récupérer le code source
@@ -30,6 +32,8 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Évaluer le modèle Gemini
+        # Seulement à la main : le niveau gratuit est limité à 20 requêtes par jour
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         # La clé est stockée dans les secrets de GitHub, jamais dans le code
         env:
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
