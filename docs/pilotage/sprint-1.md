@@ -2,7 +2,7 @@
 
 **Projet :** Éco-Frigo, planificateur de repas selon un budget.
 **Méthode :** Scrum allégé, sprints de 2 semaines, suivi dans GitHub Projects.
-**Rôles :** je suis à la fois Product Owner, développeur et Scrum Master. Mon formateur reçoit le tableau et les comptes rendus.
+**Rôles :** je suis à la fois Product Owner, développeur et Scrum Master. 
 
 ## 1. Planification (9 novembre)
 
