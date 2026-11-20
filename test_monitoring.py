@@ -3,6 +3,7 @@ test_monitoring.py : tests du suivi MLflow et du journal de sécurité (carte #1
 MLflow est remplacé par un faux (@patch) : on regarde seulement ce que le code lui envoie.
 """
 from unittest.mock import patch
+import monitoring
 from monitoring import monitorer_ia_mlflow, enregistrer_alerte_securite
 
 
@@ -49,3 +50,25 @@ def test_meme_utilisateur_meme_empreinte(journal):
     premier, deuxieme, autre = [appel.args[0] for appel in journal.warning.call_args_list]
     assert premier == deuxieme
     assert premier != autre
+
+
+@patch("monitoring.logging")
+@patch("monitoring.mlflow")
+def test_alerte_apres_3_echecs_de_suite(mlflow, journal):
+    # 2 échecs : pas d'alerte. Le 3e échec de suite déclenche l'alerte.
+    monitoring.echecs_de_suite = 0
+    for _ in range(2):
+        monitorer_ia_mlflow("Lidl", 10.0, 1.0, succes=False, personnes=1, modele="test")
+    journal.warning.assert_not_called()
+    monitorer_ia_mlflow("Lidl", 10.0, 1.0, succes=False, personnes=1, modele="test")
+    assert "ALERTE IA" in journal.warning.call_args.args[0]
+
+
+@patch("monitoring.logging")
+@patch("monitoring.mlflow")
+def test_une_reussite_remet_le_compteur_a_zero(mlflow, journal):
+    # Échec, échec, réussite, échec : les échecs ne se suivent plus, donc pas d'alerte
+    monitoring.echecs_de_suite = 0
+    for succes in (False, False, True, False):
+        monitorer_ia_mlflow("Lidl", 10.0, 1.0, succes=succes, personnes=1, modele="test")
+    journal.warning.assert_not_called()
