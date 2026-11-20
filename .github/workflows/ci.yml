@@ -1,7 +1,11 @@
 name: Integration Continue - Tests Eco-Frigo
 
+# Les tests se lancent à chaque pull request vers main et à chaque fusion dans main
 on:
   push:
+    branches:
+      - main
+  pull_request:
     branches:
       - main
 
@@ -9,31 +13,21 @@ jobs:
   tester_le_code:
     runs-on: ubuntu-latest
 
-    # --- VALIDATION C19 : PARAMÉTRAGE DE L'ENVIRONNEMENT ---
-    # Création d'une base de données MongoDB éphémère pour la CI
-    services:
-      mongodb:
-        image: mongo:latest
-        ports:
-          - 27019:27017 # Relie le port attendu par l'API (27019) au port MongoDB natif (27017)
-
     steps:
-      - name:  Récupérer le code source
-        uses: actions/checkout@v3
+      - name: Récupérer le code source
+        uses: actions/checkout@v4
 
-      - name:  Installer Python 3.12
-        uses: actions/setup-python@v4
+      - name: Installer Python 3.12
+        uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      - name:  Installer les dépendances
-        run: |
-          pip install -r requirements.txt
-          pip install pytest httpx
+      - name: Installer les dépendances
+        run: pip install -r requirements.txt
 
-      - name:  Exécuter les tests automatisés (Pytest)
-        # Injection de variables d'environnement factices pour remplacer le .env ignoré
+      - name: Tests automatisés et couverture
+        # Variable factice : le vrai .env n'est jamais envoyé sur GitHub
         env:
           SECRET_KEY: "cle_secrete_virtuelle_ci"
-          GEMINI_API_KEY: "fausse_cle_ia_pour_les_tests"
-        run: pytest test_api.py -v
+        # Tous les tests, avec la couverture ; le CI échoue si elle passe sous 80 %
+        run: python -m pytest --cov=api --cov=IA --cov=data --cov=monitoring --cov-fail-under=80 -v
