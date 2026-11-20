@@ -34,6 +34,9 @@ def enregistrer_alerte_securite(cible: str, type_attaque: str):
 mlflow.set_tracking_uri("sqlite:///mlflow.db")
 mlflow.set_experiment("Eco-Frigo-RAG")
 
+# Compte les échecs de génération qui se suivent (pour l'alerte)
+echecs_de_suite = 0
+
 def monitorer_ia_mlflow(store_name: str, budget: float, temps_execution: float, succes: bool,
                         personnes: int, modele: str, erreur: str = "", essais: int = 0):
     """
@@ -41,7 +44,15 @@ def monitorer_ia_mlflow(store_name: str, budget: float, temps_execution: float, 
     - paramètres : ce qui a été demandé (magasin, budget, personnes) et le modèle utilisé
     - métriques  : ce qui a été mesuré (temps de réponse, réussite 1 ou 0, nombre d'essais du RAG)
     - étiquette  : la raison de l'échec, pour retrouver vite les problèmes
+    - alerte     : écrite dans le journal après 3 échecs de suite
     """
+    global echecs_de_suite
+
+    # On compte les échecs à la suite : une réussite remet le compteur à zéro
+    echecs_de_suite = 0 if succes else echecs_de_suite + 1
+    if echecs_de_suite >= 3:
+        logging.warning(f"ALERTE IA | {echecs_de_suite} échecs de génération de suite")
+
     # Le titre de la ligne dans MLflow : magasin, budget et nombre de personnes
     with mlflow.start_run(run_name=f"{store_name} - {budget} € - {personnes} pers."):
         mlflow.log_param("magasin", store_name)
