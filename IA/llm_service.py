@@ -8,7 +8,8 @@ from google.genai import types
 # --- CONFIGURATION INITIALE ---
 # Récupération de la clé API et initialisation du client Gemini
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-gemini_client = genai.Client(api_key=GOOGLE_API_KEY) if GOOGLE_API_KEY else None
+# Délai maximum d'une réponse : 60 secondes (60000 ms), pour ne jamais attendre indéfiniment
+gemini_client = genai.Client(api_key=GOOGLE_API_KEY, http_options=types.HttpOptions(timeout=60000)) if GOOGLE_API_KEY else None
 CLOUD_AI_MODEL = 'gemini-3.8-flash'
 
 def expliquer_erreur(erreur: str) -> str:
